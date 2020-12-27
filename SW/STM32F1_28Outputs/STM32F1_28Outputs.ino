@@ -1,29 +1,22 @@
-#include <ArduinoUniqueID.h>
+#include <ArduinoUniqueID.h> // Library from https://github.com/ricaun/ArduinoUniqueID (Standard on the Arduino IDE Library Manager)
 #include <SPI.h>
 #include <Ethernet.h>
 #include <EEPROM.h>
 #include <Wire.h>
-#include <PubSubClient.h>
-#include "myGamma.h"
-
+#include <PubSubClient.h> // Library from https://github.com/knolleary/pubsubclient (Standard on the Arduino IDE Library Manager)
 
 #define STRING_LEN 30
 #define MQTT_STRING_LEN 128
 #define OUTPUT_COUNT 28
 
-
-
-uint16_t 	MAX_POWER = 2047;
 const int MQTT_PORT = 1883 ;
 char dynamicTopic [MQTT_STRING_LEN];
 
-
-
 uint8_t output[] = {
-PE12, PE13, PE14, PB8, PA0, PA1, PA2, PA3, PB9, PB0, PB1, PE8, PE9, PE10, PE11, PB4, PB3, PA15, PB10, PB11, PD12, PD13, PD14, PD15, PC6, PC7, PC8, PC9
+PC13, PE12, PE13, PE14, PB8, PA0, PA1, PA2, PA3, PB9, PB0, PB1, PE8, PE9, PE10, PE11, PB4, PB3, PA15, PB10, PB11, PD12, PD13, PD14, PD15, PC6, PC7, PC8, PC9
 };
 
-uint8_t outputCount = 28 ; 
+// uint8_t outputCount = 28 ; 
 char MQTT_CLIENT_ID[STRING_LEN] ; 
 
 
@@ -31,14 +24,8 @@ byte mac[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05} ;
 
 IPAddress ip(192, 168, 1, 177);
 
-//#define SERIALDEBUG 		// Comment to remove serial debugging info
-//#define SELF_TEST			// teste toutes les sorties au démarrage
-#define MIN_DELAY 0
-#define MAX_DELAY 1000			// in ms
-#define MIN_INTERVAL 20			// Minimum fading time, in milliseconds
-#define MAX_INTERVAL 10000		// maximum fading time, in milliseconds
-#define DEFAULT_FADING_TIME 200   
-#define MIN_POWER 0
+#define SERIALDEBUG 		// Comment to remove serial debugging info
+#define SELF_TEST			// teste toutes les sorties au démarrage
 #define ETH_CS_PIN PA4
 #define STATUS_PIN PC13
 
@@ -56,17 +43,11 @@ long lastReconnectAttempt = 0;							// For automatic reconnection, non-blocking
 #define MaxHeaderLength 350    //maximum length of http header required
 String httpPostRequest = String(MaxHeaderLength);
 
-#define  defaultMqttServerIP 192,168,1,22
+#define defaultMqttServerIP 192,168,1,22
 #define defaultDeviceName "testOutput"
 #define defaultMqttPrefix "relais"
-#define  defaultSubTopicStatus  "status" 
-#define   defaultSubTopicSet  "set"
-#define   defaultSubTopicPower  "power"
-#define   defaultSubTopicTransition  "transition"
-#define   defaultSubTopicDelay  "delay"
-#define   defaultSubTopicUpdate  "update"
-#define   defaultSubTopicPwmFrequency  "frequency"
-
+#define defaultSubTopicStatus  "status" 
+#define defaultSubTopicSet  "set"
 
 struct mySettings {	
 	char deviceName [STRING_LEN] ;
@@ -74,11 +55,6 @@ struct mySettings {
 	char mqttPrefix [STRING_LEN] ;
 	char subTopicStatus [STRING_LEN] ;
 	char subTopicSet [STRING_LEN] ;
-	char subTopicPower [STRING_LEN] ;
-	char subTopicTransition [STRING_LEN] ;
-	char subTopicDelay [STRING_LEN] ;
-	char subTopicUpdate [STRING_LEN] ;
-	char subTopicPwmFrequency [STRING_LEN] ;
 };
 
 
@@ -89,187 +65,17 @@ struct mySettings defaultSettings = (mySettings) {
 	IPAddress(192,168,1,22),
 	defaultMqttPrefix,
 	defaultSubTopicStatus, 
-	defaultSubTopicSet, 
-	defaultSubTopicPower, 
-	defaultSubTopicTransition, 
-	defaultSubTopicDelay, 
-	defaultSubTopicUpdate, 
-	defaultSubTopicPwmFrequency
+	defaultSubTopicSet
 };
 
 
 bool needMqttConnect = false;
 bool needReset = false;
 unsigned long lastMqttConnectionAttempt = 0;
-
-uint8_t LEDFaderChannelNumber = outputCount ;
-uint8_t LEDFaderChannel[] = {PE12, PE13, PE14, PB8, PA0, PA1, PA2, PA3, PB9, PB0, PB1, PE8, PE9, PE10, PE11, PB4, PB3, PA15, PB10, PB11, PD12, PD13, PD14, PD15, PC6, PC7, PC8, PC9} ;							// PINs PC6-7-8-9 are channels 1-2-3-4 of timer TIM3
-unsigned long LEDFaderLastStepTime [] = {0,0,0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} ;
-unsigned int LEDFaderInterval [] = {0,0,0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} ;
-uint16_t LEDFaderColor []= {0,0,0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} ;
-uint16_t LEDFaderToColor [] = {0,0,0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} ;
-unsigned int LEDFaderDuration [] = {0,0,0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} ;
-float LEDFaderPercentDone [] = {0,0,0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} ;
-
-uint16_t DELAY [] = {0,0,0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} ;
-uint16_t FADE_TIME [] = {DEFAULT_FADING_TIME,DEFAULT_FADING_TIME,DEFAULT_FADING_TIME,DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME, DEFAULT_FADING_TIME} ;  								// Time set for fading in ms
 uint8_t isON [] = {0,0,0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} ;
-uint16_t lightPowerMemory [] = {0,0,0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} ;	// Will store the last set power level
 
 
-
-
-uint16_t LEDFaderExponential(uint16_t i) {						// Returns the value read from the exponential table. 
-	return myGamma[i];
-}
-
-uint16_t LEDFaderLinear(uint16_t i) {
-	return i;
-}
-
-uint16_t LEDFaderReverse(uint16_t i) {
-	return MAX_POWER-i;
-}
-
-void LEDFaderSetPin(uint8_t channel, uint8_t pwm_pin) {			// For setup purposes
-  LEDFaderChannel [channel] = pwm_pin;
-}
-
-uint8_t LEDFaderGetPin(uint8_t channel){						// Not used...
-  return LEDFaderChannel [channel];
-}
-
-bool LEDFaderSetValue(uint8_t channel, uint16_t value) {				// Updates the PCA9685 controller with the current output values 
-
-
-  LEDFaderColor [channel] = (uint16_t)constrain(value, 0, MAX_POWER);		// Keep the value within boundaries, in case...
-
-  //analogWrite(LEDFaderChannel[channel], LEDFaderExponential(value));	// Updates the value for the given channel on the PWM pin
-	
-	/*
-	if (value == 0 ) {
-		digitalWrite(LEDFaderChannel[channel], 0);
-	}else {
-		digitalWrite(LEDFaderChannel[channel], 1);
-	}*/
-  
-  
-  #ifdef SERIALDEBUG
-	Serial.print ("Set Value, channel: ");
-	Serial.print (channel);
-	Serial.print (", value: ");
-	Serial.println (value);
-	#endif
-  
-  return 1;
-
-}
-
-
-uint8_t LEDFaderFade(uint8_t channel, uint16_t value, unsigned int time) {			// Sets the target value for the light
-  LEDFaderStopFade(channel);				// We stop the current fading if there's one
-  LEDFaderPercentDone [channel] = 0;
-
-  
-  if (value == LEDFaderColor  [channel]) { 	// Color hasn't changed
-    return 2;
-  }
-
-  if (time <= MIN_INTERVAL) {				// If the fade time is less than MIN_INTERVAL (default 20ms), there's no fade
-    LEDFaderSetValue(channel, value);
-    return 2;
-  }
-
-  LEDFaderDuration [channel] = time;												// This will be used to calculate the light value
-  LEDFaderToColor [channel] = (uint16_t)constrain(value, 0, MAX_POWER);				// To keep it within boundaries...
-
-  // Figure out what the interval should be so that we're changing the color by at least 1 each cycle
-  // (minimum interval is MIN_INTERVAL)
-  float color_diff = abs(LEDFaderColor [channel] - LEDFaderToColor [channel]);
-  LEDFaderInterval [channel] = round((float)LEDFaderDuration [channel] / color_diff);
-  if (LEDFaderInterval [channel] < MIN_INTERVAL) {
-    LEDFaderInterval [channel] = MIN_INTERVAL;
-  }
-
-  LEDFaderLastStepTime [channel] = millis();
-
-  return 1;
-}
-
-bool LEDFaderIsFading(uint8_t channel) {
-
-  if (LEDFaderDuration [channel] > 0)  return true;
-  else return false;
-}
-
-
-
-void LEDFaderStopFade(uint8_t channel) {			// Stops fading, the light intensity stays where it is at the moment.
-  LEDFaderPercentDone [channel] = 100;
-  LEDFaderDuration [channel] = 0;
-}
-
-
-uint8_t LEDFaderGetProgress(uint8_t channel) {
-  return round(LEDFaderPercentDone [channel]);
-}
-
-bool LEDFaderUpdate(uint8_t channel) {				// this is called in the main loop to update each channel
-
-
-  // No fade
-  if (LEDFaderDuration [channel] == 0) {
-    return false;
-  }
-
-  unsigned long now = millis();
-  unsigned int time_diff = now - LEDFaderLastStepTime [channel];
-
-  // Interval hasn't passed yet
-  if (time_diff < LEDFaderInterval [channel] ) {
-    return true;
-  }
-
-  // How far along have we gone since last update
-  float percent = (float)time_diff / (float)LEDFaderDuration [channel];
-  LEDFaderPercentDone[channel] += percent;
-
-  // If we've hit 100%, set LED to the final color
-  if (percent >= 1) {
-    LEDFaderStopFade(channel);
-    LEDFaderSetValue(channel, LEDFaderToColor [channel]);
-	
-  // Check if the light is on or off and update the status
-  
-	if (isON[channel]) if (!LEDFaderColor[channel]){
-	  doOFF(channel, 0);
-	  isON[channel] = 0;
-  }
-  
-  if (!isON[channel]) if (LEDFaderColor[channel]) {
-	  doON(channel, 0);
-	  isON[channel] = 1;
-  }
-	
-    return false;
-  }
-
-  // Else, move color to where it should be
-  int color_diff = LEDFaderToColor [channel] - LEDFaderColor [channel] ;
-  int increment = round(color_diff * percent);
-
-  LEDFaderSetValue(channel, LEDFaderColor [channel] + increment);
-  
-
-  
-
-		    
-
-  // Update time and finish
-  LEDFaderDuration [channel] -= time_diff;
-  LEDFaderLastStepTime [channel] = millis();
-  return true;
-}
+   
 
 bool mqttReconnect() {							// Code to test the MQTT connection and reconnect if necessary, does not block the processor
   if (mqttClient.connect(MQTT_CLIENT_ID)) {		// Unique clientID
@@ -281,7 +87,6 @@ bool mqttReconnect() {							// Code to test the MQTT connection and reconnect i
     
 	strcpy (topicOut, dynamicTopic);
 	strcat (topicOut, "#");
-	
 	
 	#ifdef SERIALDEBUG
 	 Serial.print ("Subscribe to topic: ") ;
@@ -307,7 +112,7 @@ void mqttCallback (char* topic , byte* payload , unsigned int length) {			// We 
 	
 	#endif
 	
-    // Allocate the correct amount of memory for the payload copy. We don't know if a new message will arrive while we work on it, so we work on a copy of it
+  // Allocate the correct amount of memory for the payload copy. We don't know if a new message will arrive while we work on it, so we work on a copy of it
 	byte* msg = (byte*)malloc(length+1);
 	// Copy the payload to the new buffer
 	memcpy(msg,payload,length);
@@ -321,8 +126,7 @@ void mqttCallback (char* topic , byte* payload , unsigned int length) {			// We 
 		Serial.print((char)msg[i]);
 	}
 	 Serial.println(); 
-	
-	 Serial.print("Détection nombre:");
+	 Serial.print("Detection nombre:");
 	
 	#endif
 		
@@ -345,10 +149,6 @@ void mqttCallback (char* topic , byte* payload , unsigned int length) {			// We 
 	char *result[10];
 		
 	uint8_t channel =5;
-   
-
-	
-	
 	
 	// Remove from the TOPIC, the first part which we don't need:
 	#ifdef SERIALDEBUG
@@ -450,41 +250,19 @@ void mqttCallback (char* topic , byte* payload , unsigned int length) {			// We 
 		}
 		
 		if (payload[0] == '3'){
-			
 			// do something to enter continous fade
 		}
 		
 		if (payload[0] == '4'){
-			
 			// do something to stop continuous fade
 		}
 		
 		if (payload[0] == '5'){
-			
 			needReset = true ;
 		}
 		
 	}
-	
-	
-	if ( !(strcmp (result[1] ,settings.subTopicPower) || strcmp (result[2] ,settings.subTopicSet))){		// We set the light to the required power, and save the power value
-		
-		setPower (channel, valeur);							
-		lightPowerMemory[channel] = valeur;
-	}
-	
-	if ( !(strcmp (result[1] ,settings.subTopicTransition) || strcmp (result[2] ,settings.subTopicSet))){		// We set the transition to the required value for this channel
-		
-		setTransition (channel,valeur);							
-				
-	}
-	
-	if ( !(strcmp (result[1] ,settings.subTopicDelay) || strcmp (result[2] ,settings.subTopicSet))){		// We set the light to the required delay for this channel
-		
-		setDelay (channel, valeur);							
-		
-	}
-	
+  
 	free(msg);
 	for (int i=0 ; i<3 ; i++) free (result[i]);
 	
@@ -498,8 +276,7 @@ void doON(uint8_t channel, bool changeValue){
 	char convert [5];
 		
 	if (changeValue) digitalWrite(output[channel], 1);
-	//LEDFaderFade(channel, lightPowerMemory[channel], FADE_TIME [channel]); 		// Switches light ON, to the previously set value
-	
+ 	
 	strcpy (topicOut,dynamicTopic);
 	sprintf (convert, "%i", channel);
 	strcat (topicOut, convert);
@@ -522,9 +299,7 @@ void doOFF(uint8_t channel, bool changeValue){
 	char convert [5];
 	
 	if (changeValue) digitalWrite(output[channel], 0);
-	//LEDFaderFade(channel, 0, FADE_TIME [channel]);
-  
-	
+
 	strcpy (topicOut,dynamicTopic);
 	sprintf (convert, "%i", channel);
 	strcat (topicOut, convert);
@@ -540,82 +315,6 @@ void doOFF(uint8_t channel, bool changeValue){
 
 }
 
-void setPower(uint8_t channel,  uint16_t power){
-	
-		char topicOut [MQTT_STRING_LEN];
-		char convert [5];
-		
-		//LEDFaderFade(channel, power, FADE_TIME [channel]);
-		
-			
-		
-		strcpy (topicOut, dynamicTopic);
-		sprintf (convert, "%i", channel);
-		strcat (topicOut, convert);
-		strcat (topicOut, "/");
-		strcat (topicOut, settings.subTopicPower);
-	
-		
-		sprintf (convert, "%i", power);
-		mqttClient.publish(topicOut, convert);
-	
-		#ifdef SERIALDEBUG
-		 Serial.print ("Puissance réglée à :");
-		 Serial.println (power);		
-		#endif
-	
-}
-
-void setTransition( uint8_t channel, uint16_t transition_value){
-	
-		char topicOut [MQTT_STRING_LEN];	
-		char convert [5];
-	
-		FADE_TIME [channel] = transition_value ; 		// updates the value
-		
-					// then outputs acknowledgment
-		strcpy (topicOut, dynamicTopic);
-		sprintf (convert, "%i", channel);
-		strcat (topicOut, convert);
-		strcat (topicOut, "/");
-		strcat (topicOut, settings.subTopicTransition);
-	
-		
-		sprintf (convert, "%i", FADE_TIME [channel]);
-		mqttClient.publish(topicOut, convert);
-	
-		#ifdef SERIALDEBUG
-		 Serial.print ("Temps de transition réglé à :");
-		 Serial.println (FADE_TIME [channel]);		
-		#endif
-	
-}
-
-
-void setDelay( uint8_t channel, uint16_t delay_value){
-	
-		char topicOut [MQTT_STRING_LEN];	
-		char convert [5];
-		
-		DELAY [channel] = delay_value ; 		// updates the value
-		
-					// then outputs acknowledgment
-		strcpy (topicOut, dynamicTopic);
-		sprintf (convert, "%i", channel);
-		strcat (topicOut, convert);
-		strcat (topicOut, "/");
-		strcat (topicOut, settings.subTopicDelay);
-	
-		
-		sprintf (convert, "%i", DELAY [channel]);
-		mqttClient.publish(topicOut, convert);
-		
-		#ifdef SERIALDEBUG
-		 Serial.print ("Délai réglé à :");
-		 Serial.println (FADE_TIME [channel]);		
-		#endif
-	
-}
 
 
 
@@ -661,37 +360,7 @@ void handlePost(){
 	for (int i= index1, j=0 ; i<index2; i++, j++) 
 		settings.subTopicSet[j] = httpPostRequest.charAt(i);
 	settings.subTopicSet[(index2 - index1 )] = 0;
-	
-	index1 = httpPostRequest.indexOf("subTopicPower=") + 14;
-	index2 = httpPostRequest.indexOf("&", index1);
-	for (int i= index1, j=0 ; i<index2; i++, j++) 
-		settings.subTopicPower[j] = httpPostRequest.charAt(i);
-	settings.subTopicPower[(index2 - index1 )] = 0;
-	
-	index1 = httpPostRequest.indexOf("subTopicTransition=") + 19;
-	index2 = httpPostRequest.indexOf("&", index1);
-	for (int i= index1, j=0 ; i<index2; i++, j++) 
-		settings.subTopicTransition[j] = httpPostRequest.charAt(i);
-	settings.subTopicTransition[(index2 - index1 )] = 0;
-	
-	index1 = httpPostRequest.indexOf("subTopicDelay=") + 14;
-	index2 = httpPostRequest.indexOf("&", index1);
-	for (int i= index1, j=0 ; i<index2; i++, j++) 
-		settings.subTopicDelay[j] = httpPostRequest.charAt(i);
-	settings.subTopicDelay[(index2 - index1 )] = 0;
-	
-	index1 = httpPostRequest.indexOf("subTopicUpdate=") + 15;
-	index2 = httpPostRequest.indexOf("&", index1);
-	for (int i= index1, j=0 ; i<index2; i++, j++) 
-		settings.subTopicUpdate[j] = httpPostRequest.charAt(i);
-	settings.subTopicUpdate[(index2 - index1 )] = 0;
-	
-	index1 = httpPostRequest.indexOf("subTopicPwmFrequency=") + 21;
-	index2 = httpPostRequest.length();
-	for (int i= index1, j=0 ; i<index2; i++, j++) 
-		settings.subTopicPwmFrequency[j] = httpPostRequest.charAt(i);
-	settings.subTopicPwmFrequency[(index2 - index1 )] = 0;
-	
+  
 	#ifdef SERIALDEBUG
 	Serial.println("Valeurs enregistrées:");
 	Serial.println(settings.deviceName);
@@ -705,11 +374,6 @@ void handlePost(){
 	Serial.println(settings.mqttPrefix);
 	Serial.println(settings.subTopicStatus);
 	Serial.println(settings.subTopicSet);
-	Serial.println(settings.subTopicPower);
-	Serial.println(settings.subTopicTransition);
-	Serial.println(settings.subTopicDelay);
-	Serial.println(settings.subTopicUpdate);
-	Serial.println(settings.subTopicPwmFrequency);
 	
 	Serial.println("Effacement mémoire");
 	#endif
@@ -787,10 +451,10 @@ void readStoredVariables(){
 void writeResponse(EthernetClient client) {
     
 	// send a standard http response header
-    client.println("HTTP/1.1 200 OK");
-    client.println("Content-Type: text/html");
-    client.println("Connection: close");  // the connection will be closed after completion of the response
-    client.println();
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-Type: text/html");
+  client.println("Connection: close");  // the connection will be closed after completion of the response
+  client.println();
 	client.print(R"FOO(<!DOCTYPE html><html><head><title>Module sortie relais: r&eacute;glages</title></head><body>)FOO");
 	client.print(R"FOO(<p>Connexion MQTT: <span style="color: )FOO");
 	if (mqttClient.connected()) { 
@@ -803,11 +467,7 @@ void writeResponse(EthernetClient client) {
 	client.print (R"FOO(</p><p>Statut:&nbsp;)FOO");
 	client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/"); client.print(settings.subTopicStatus); client.print("/");
 	client.print(R"FOO(</p><p>Actions:&nbsp;)FOO");
-	client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/(canal 0-27)/");client.print(settings.subTopicSet); client.print("/");
-	client.print(R"FOO(</p><p>R&eacute;glages:</p><p>Puissance:&nbsp;)FOO");
-	client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/(canal 0-27)/");client.print(settings.subTopicPower); client.print("/");
-	client.print(R"FOO(</p><p>Dur&eacute;e de transition:&nbsp;)FOO");
-	client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/(canal 0-27)/");client.print(settings.subTopicTransition); client.print("/");
+	client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/(canal 1-28)/");client.print(settings.subTopicSet); client.print("/");
 	client.print(R"FOO(</p><p></p>)FOO");
 	client.print(R"FOO(<fieldset><legend><h1>Mise &agrave; jour param&egrave;tres MQTT :</h1></legend> 
 						<form accept-charset="UTF-8" autocomplete="off" method="POST">
@@ -835,26 +495,6 @@ void writeResponse(EthernetClient client) {
 			<input name="subTopicSet" type="text" value=")FOO");
 	client.print(settings.subTopicSet);
 	client.print(R"FOO(" /> <br /> <br>
-			<label for="subTopicPowerLabel">Sous-topic r&eacute;glage puissance :</label><br /> 
-			<input name="subTopicPower" type="text" value=")FOO");
-	client.print(settings.subTopicPower);
-	client.print(R"FOO(" /> <br /> <br>
-			<label for="subTopicTransitionLabel">Sous-topic dur&eacute;e de transition :</label><br /> 
-			<input name="subTopicTransition" type="text" value=")FOO");
-	client.print(settings.subTopicTransition);
-	client.print(R"FOO(" /> <br /> <br>
-			<label for="subTopicDelayLabel">Sous-topic D&eacute;lai :</label><br /> 
-			<input name="subTopicDelay" type="text" value=")FOO");
-	client.print(settings.subTopicDelay);
-	client.print(R"FOO(" /> <br /> <br>
-			<label for="subTopicUpdateLabel">Sous-topic mise &agrave; jour :</label><br /> 
-			<input name="subTopicUpdate" type="text" value=")FOO");
-	client.print(settings.subTopicUpdate);
-	client.print(R"FOO(" /> <br /> <br>
-			<label for="subTopicPwmFrequencyLabel">Sous-topic fr&eacute;quence PWM :</label><br /> 
-			<input name="subTopicPwmFrequency" type="text" value=")FOO");
-	client.print(settings.subTopicPwmFrequency);
-	client.print(R"FOO(" /> <br /> <br>
 			<button type="submit" value="Submit">Valider les modifications et red&eacute;marrer</button>
 			</fieldset>
 			</form>)FOO");
@@ -862,41 +502,56 @@ void writeResponse(EthernetClient client) {
   }
 
 
-
 void setup() {
   
   // initialize output pins
-  
-  for (int pinNumber = 0; pinNumber < outputCount; pinNumber++) {
+  for (int pinNumber = 0; pinNumber < OUTPUT_COUNT+1; pinNumber++) {
     pinMode(output[pinNumber], OUTPUT);
+    digitalWrite(output[pinNumber], LOW);
 	}
 
-  for (int pinNumber = 0; pinNumber < outputCount; pinNumber++) {
-    digitalWrite(output[pinNumber], LOW);
-  }
-  
   Serial.begin(115200);
   delay(200);
   
   #ifdef SELF_TEST
-  for (int i=0; i<outputCount ; i++){
-	  digitalWrite(output[i] , 1);
-	  delay(20);
-	  digitalWrite(output[i], 0);
-  }
-  
-   for (int i=outputCount-1; i>=0; i--){
-	  digitalWrite(output[i] , 1);
-	  delay(20);
-	  digitalWrite(output[i], 0);
-  }
+    for (int i=1; i<OUTPUT_COUNT+1 ; i++){ digitalWrite(output[i] , 1);delay(20);digitalWrite(output[i], 0); }
+    for (int i=OUTPUT_COUNT; i>=1; i--)  { digitalWrite(output[i] , 1);delay(20);digitalWrite(output[i], 0); }
   #endif
   
   
   #ifdef SERIALDEBUG
-  Serial.println("Hello");
+    Serial.println("Hello !!!");
+    Serial.print("UniqueID  - ");UniqueIDdump(Serial);
+    Serial.print("UniqueID8 - ");UniqueID8dump(Serial);
   #endif
-	
+
+  mac[0] = 0x00; // UniqueID8[2]; 
+  mac[1] = 0x80; // UniqueID8[3]; 
+  mac[2] = 0xE1; // UniqueID8[4]; 
+  mac[3] = UniqueID8[5]; 
+  mac[4] = UniqueID8[6]; 
+  mac[5] = UniqueID8[7]; 
+    
+/*  
+ // if invalid MAC, change first byte
+  if((mac[0]&0x03)!=2) {   
+    mac[0]&=0xFC;mac[0]|=0x2;
+  }
+*/
+
+  #ifdef SERIALDEBUG
+    Serial.print("MAC :");
+    for (byte octet = 0; octet < 6; octet++) {
+        Serial.print(mac[octet], HEX);
+        if (octet < 5) {
+          Serial.print('-');
+        }
+      }
+      Serial.println();
+  #endif
+
+  
+  
   for(size_t i = 0; i < 8; i++)
 	MQTT_CLIENT_ID[i] = UniqueID8[i]; 
   MQTT_CLIENT_ID[8] = 0;
@@ -919,50 +574,29 @@ void setup() {
 	  
   }
   #ifdef SERIALDEBUG
-  Serial.print("MQTT CLIENT ID:");
-  Serial.println(MQTT_CLIENT_ID);
+      Serial.print("MQTT CLIENT ID:");
+      Serial.println(MQTT_CLIENT_ID);
   #endif
 	
 
-  for(size_t i = 0; i < 6; i++)
-  mac[i] = UniqueID8[i]; 
-	
-	
-	// if invalid MAC, change first byte
-  if((mac[0]&0x03)!=2) {   
-    mac[0]&=0xFC;mac[0]|=0x2;
-  }
   
   readStoredVariables();
   
   #ifdef SERIALDEBUG
-  Serial.println ("Lecture EEPROM:");
-  Serial.println(settings.deviceName);
-  Serial.print(settings.mqttServerIP[0]); 
-  Serial.print(".");
-  Serial.print(settings.mqttServerIP[1]); 
-  Serial.print(".");
-  Serial.print(settings.mqttServerIP[2]); 
-  Serial.print(".");
-  Serial.println(settings.mqttServerIP[3]); 
-  Serial.println(settings.mqttPrefix);
-  Serial.println(settings.deviceName);
-  Serial.println(settings.subTopicStatus);
-  Serial.println(settings.subTopicSet);
-  Serial.println(settings.subTopicPower);
-  Serial.println(settings.subTopicTransition);
-  Serial.println(settings.subTopicDelay);
-  Serial.println(settings.subTopicUpdate);
-  Serial.println(settings.subTopicPwmFrequency);
-	#endif
-  
-  analogWriteResolution (11);
-  analogWriteFrequency(35000);
-    
-  for (int i=0 ; i<outputCount ; i++) {
-	LEDFaderSetValue(i,0);
-  }
-
+      Serial.println ("Lecture EEPROM:");
+      Serial.println(settings.deviceName);
+      Serial.print(settings.mqttServerIP[0]); 
+      Serial.print(".");
+      Serial.print(settings.mqttServerIP[1]); 
+      Serial.print(".");
+      Serial.print(settings.mqttServerIP[2]); 
+      Serial.print(".");
+      Serial.println(settings.mqttServerIP[3]); 
+      Serial.println(settings.mqttPrefix);
+      Serial.println(settings.deviceName);
+      Serial.println(settings.subTopicStatus);
+      Serial.println(settings.subTopicSet);
+  #endif
   
   #ifdef SERIALDEBUG
       Serial.println("Initialisation Ethernet...") ;
@@ -974,23 +608,19 @@ void setup() {
 
   // Check for Ethernet hardware present
   if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-    
-	Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
-
+	  Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
     while (true) {
       delay(1); // do nothing, no point running without Ethernet hardware
     }
   }
   if (Ethernet.linkStatus() == LinkOFF) {
-    
-	Serial.println("Ethernet cable is not connected.");
-	
+	  Serial.println("Ethernet cable is not connected.");
   }
 
   // start the server
   server.begin();
   #ifdef SERIALDEBUG
-  Serial.print("server is at ");
+  Serial.print("My IP Address is ");
   Serial.println(Ethernet.localIP());
   #endif
   
@@ -1027,10 +657,6 @@ void loop() {
 		NVIC_SystemReset();  
 	}
   
-  for (int i=0 ; i<outputCount ; i++) {
-	LEDFaderUpdate(i);
-	}
-	
 	if (!mqttClient.connected()) {
     long now = millis();
     if (now - lastReconnectAttempt > 5000) {
@@ -1127,5 +753,3 @@ void loop() {
 	}
     } // end if (client)	  
 }
-
-
