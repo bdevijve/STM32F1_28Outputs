@@ -1,0 +1,18 @@
+ICP356 Netlis v.s. PCB copper test
+1969 total testpoints processed
+
+0 of No-copper testpoint errors
+
+0 of Short-Circuit errors
+
+2 of Broken Net error(s)
+IPC356 net "N$191" is broken into 2 subnets:
+subnet 1:
+    LED29-A
+subnet 2:
+    R138-1
+IPC356 net "N$192" is broken into 2 subnets:
+subnet 1:
+    D30-A    U30-P$3    X5-4    X5-4
+subnet 2:
+    LED29-C
