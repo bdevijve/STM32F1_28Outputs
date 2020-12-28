@@ -2,6 +2,13 @@
 #define SERIALDEBUG     // Comment to remove serial     debugging info
 #define SELF_TEST       // teste toutes les sorties au démarrage
 
+/*
+ * Reste à faire :  - MQTT Publish Uptime
+ *                  - HTTP Publish Output + Uptime
+ *                  - HTTP set Output
+ *                  - Watchdog
+ *                  - DHCP Hostname & Freebox issue                  
+ */
 
 #include <SPI.h>
 #include <Ethernet.h>
@@ -22,7 +29,6 @@ PC13, PE12, PE13, PE14, PB8, PA0, PA1, PA2, PA3, PB9, PB0, PB1, PE8, PE9, PE10, 
 };
 
 char MQTT_CLIENT_ID[STRING_LEN] ; 
-
 
 byte mac[] = {0x00, 0x80, 0xE1, 0x03, 0x04, 0x05} ; 
 
