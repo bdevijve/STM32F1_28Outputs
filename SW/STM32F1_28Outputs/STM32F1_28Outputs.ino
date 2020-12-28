@@ -16,11 +16,10 @@ uint8_t output[] = {
 PC13, PE12, PE13, PE14, PB8, PA0, PA1, PA2, PA3, PB9, PB0, PB1, PE8, PE9, PE10, PE11, PB4, PB3, PA15, PB10, PB11, PD12, PD13, PD14, PD15, PC6, PC7, PC8, PC9
 };
 
-// uint8_t outputCount = 28 ; 
 char MQTT_CLIENT_ID[STRING_LEN] ; 
 
 
-byte mac[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05} ; 
+byte mac[] = {0x00, 0x80, 0xE1, 0x03, 0x04, 0x05} ; 
 
 IPAddress ip(192, 168, 1, 177);
 
@@ -68,14 +67,8 @@ struct mySettings defaultSettings = (mySettings) {
 	defaultSubTopicSet
 };
 
-
-bool needMqttConnect = false;
 bool needReset = false;
-unsigned long lastMqttConnectionAttempt = 0;
-uint8_t isON [] = {0,0,0,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} ;
-
-
-   
+uint8_t isON [] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0} ;
 
 bool mqttReconnect() {							// Code to test the MQTT connection and reconnect if necessary, does not block the processor
   if (mqttClient.connect(MQTT_CLIENT_ID)) {		// Unique clientID
@@ -83,7 +76,7 @@ bool mqttReconnect() {							// Code to test the MQTT connection and reconnect i
 	
 	strcpy (topicOut, dynamicTopic);
 	strcat (topicOut, settings.subTopicStatus);
-	mqttClient.publish(topicOut, "Client ESP connecté. Bonjour!");
+	mqttClient.publish(topicOut, "Client MQTT STM32 connecté. Bonjour !");
     
 	strcpy (topicOut, dynamicTopic);
 	strcat (topicOut, "#");
@@ -120,43 +113,34 @@ void mqttCallback (char* topic , byte* payload , unsigned int length) {			// We 
 	
 	#ifdef SERIALDEBUG
 		Serial.print("Message reçu: ");
-		
-		for (unsigned int i = 0; i < length; i++) {
-		
-		Serial.print((char)msg[i]);
-	}
-	 Serial.println(); 
-	 Serial.print("Detection nombre:");
-	
+		for (unsigned int i = 0; i < length; i++) Serial.print((char)msg[i]);
+	  Serial.println(); 
+	  Serial.print("Detection nombre:");
 	#endif
 		
 	String s = String((char*)msg);			// If the payload is an integer, it goes inside this value
 	uint16_t valeur = s.toInt();
 	
 	#ifdef SERIALDEBUG
-	 Serial.println(valeur);
+	  Serial.println(valeur);
 	#endif
 	
 	// Detection of the channel and saving the value:
 	
 	char myArray [MQTT_STRING_LEN];
-		
 	char slash[5] ;
-	
+ 	
 	sprintf(slash,"/");
-	
-	
-	char *result[10];
-		
-	uint8_t channel =5;
+
+	char *result[10];		
+	uint8_t channel=0;
 	
 	// Remove from the TOPIC, the first part which we don't need:
 	#ifdef SERIALDEBUG
-	 Serial.print("Remove first part... Length of dynamicTopic: ");
-	 Serial.println(strlen(dynamicTopic));
+	  Serial.print("Remove first part... Length of dynamicTopic: ");
+	  Serial.println(strlen(dynamicTopic));
 	#endif
 
-	
 	uint8_t Alength = strlen(dynamicTopic)-1;
 	uint8_t Blength = strlen(topic)- Alength;
 	
@@ -165,49 +149,47 @@ void mqttCallback (char* topic , byte* payload , unsigned int length) {			// We 
 	myArray[Blength]= '\0';
 	
 	#ifdef SERIALDEBUG
-	 Serial.print("Chaine résultante: "); 
-	 Serial.println(myArray); 
-	 Serial.print ("Longeur restante: ");
-	 Serial.println (strlen(myArray));
-	 Serial.print ("Devrait être: ");
-	 Serial.println (strlen(topic)- Alength);
-	 
+ 	  Serial.print("Chaine résultante: "); 
+	  Serial.println(myArray); 
+	  Serial.print ("Longeur restante: ");
+	  Serial.println (strlen(myArray));
+	  Serial.print ("Devrait être: ");
+	  Serial.println (strlen(topic)- Alength);	 
 	#endif
 	
 	char * token = strtok(myArray,"/");
 	uint8_t j = 0;
 	uint8_t numberArguments = 0 ;
 	while (token != NULL) {
-	 
-	 numberArguments ++ ;	
-	 result[j] = (char*) malloc (strlen(token));
-	 sprintf(result[j], "%s", token);
-	 
-	 #ifdef SERIALDEBUG
-	 Serial.print(j); Serial.print (" :"); Serial.println (result[j]);
-	 #endif
+	  numberArguments ++ ;	
+	  result[j] = (char*) malloc (strlen(token));
+	  sprintf(result[j], "%s", token);
+
+	  #ifdef SERIALDEBUG
+	    Serial.print(j); Serial.print (" :"); Serial.println (result[j]);
+	  #endif
 	 	 
-     token = strtok(NULL,"/");
-	 j++;
-	 }
+    token = strtok(NULL,"/");
+	  j++;
+	  }
 	
 	#ifdef SERIALDEBUG
-	Serial.printf("all Done!\n");
+	  Serial.printf("all Done!\n");
 	#endif
 	
 	if (numberArguments < 3) {
 		result[2] = (char*) malloc (3);
 		sprintf(result[2],"0");
-	}
+	  }
 	
 	#ifdef SERIALDEBUG
-	for (int i=0 ; i<3 ; i++) Serial.println(result[i]);
+	  for (int i=0 ; i<3 ; i++) Serial.println(result[i]);
 	#endif
 	
 	
 	// get the channel number  
 	#ifdef SERIALDEBUG
-	 Serial.println("Get channel number...");
+	  Serial.println("Get channel number...");
 	#endif
 	
 	channel = atoi (result[0]);
@@ -217,58 +199,30 @@ void mqttCallback (char* topic , byte* payload , unsigned int length) {			// We 
 	//if (erreur)  Serial.println("Erreur numéro de canal");
 		
 	#ifdef SERIALDEBUG
-	 Serial.print("Canal:");
-	 Serial.println(channel);
-	 Serial.println("Sub-topics:");
-	 Serial.println(result[0]);
-	 Serial.println(result[1]);
-	 Serial.println(result[2]);
+	  Serial.print("Canal:");
+	  Serial.println(channel);
+	  Serial.println("Sub-topics:");
+	  Serial.println(result[0]);
+	  Serial.println(result[1]);
+	  Serial.println(result[2]);
 	#endif
 	
-	
-	// Now figure out what to do: 0-> OFF, 1-> ON, 2-> toggle, 3-> enter "continuous fade", 4-> stop 'continuous fade", 5-> reset board
-	
+	// Now figure out what to do: 0-> OFF, 1-> ON, 2-> toggle, 3-> nothing, 4-> nothing, 5-> reset board
 	if ( !strcmp (result[1] , settings.subTopicSet)){ 			// Simple, just switch on or off
-	
-		if (payload[0] == '1') {		// Switch ON
-			doON(channel, 1);
-			//isON[channel] = 1;				
-		}
-		if (payload[0] == '0') {		// Switch OFF
-			doOFF(channel, 1);
-			//isON[channel] = 0;
-		}
-		if (payload[0] == '2') {		// Toggles the light's state
-			if (!isON[channel]) {
-				doON(channel, 1) ;
-				//isON[channel] = 1;
-			}
-			else {
-				doOFF(channel, 1) ;
-				//isON[channel] = 0;
-			}
-		}
-		
-		if (payload[0] == '3'){
-			// do something to enter continous fade
-		}
-		
-		if (payload[0] == '4'){
-			// do something to stop continuous fade
-		}
-		
-		if (payload[0] == '5'){
-			needReset = true ;
-		}
-		
+    if (payload[0] == '0') doOFF(channel, 1);    // Switch OFF
+		if (payload[0] == '1') doON(channel, 1);		  // Switch ON			
+		if (payload[0] == '2')
+			if (!isON[channel]) doON(channel, 1);
+			else doOFF(channel, 1) ; // Toggles the output state		
+		if (payload[0] == '3');
+		if (payload[0] == '4');
+		if (payload[0] == '5') needReset = true ;
 	}
   
 	free(msg);
 	for (int i=0 ; i<3 ; i++) free (result[i]);
 	
 }
-
-
 
 void doON(uint8_t channel, bool changeValue){
 
@@ -284,12 +238,11 @@ void doON(uint8_t channel, bool changeValue){
 	strcat (topicOut, settings.subTopicStatus);
 	mqttClient.publish(topicOut, "1", 1);
 	
-		#ifdef SERIALDEBUG
-	 Serial.println ("Got it! ON");
-		#endif
+	#ifdef SERIALDEBUG
+    Serial.println ("Got it! ON");
+	#endif
 		
-	isON[channel]  = 1 ;
-
+	isON[channel] = 1 ;
 }
 
 
@@ -308,15 +261,12 @@ void doOFF(uint8_t channel, bool changeValue){
 	mqttClient.publish(topicOut, "0", 1);
 	
 	#ifdef SERIALDEBUG
-	 Serial.println ("Got it! OFF");
+	  Serial.println ("Got it! OFF");
 	#endif
 	
 	isON[channel] = 0 ;
 
 }
-
-
-
 
 void handlePost(){
 	
@@ -329,7 +279,7 @@ void handlePost(){
 	settings.deviceName[(index2 - index1 )] = 0;
 	
 	#ifdef SERIALDEBUG 
-	Serial.println();
+	  Serial.println();
 	#endif
 		
 	// mqttserverIP  :Convert char array IP address to IPAddress format...
@@ -341,8 +291,7 @@ void handlePost(){
 		ipString[j] = httpPostRequest.charAt(i);
 	ipString[(index2 - index1 )] = 0;
 	sscanf(ipString, "%u.%u.%u.%u", &settings.mqttServerIP[0], &settings.mqttServerIP[1], &settings.mqttServerIP[2], &settings.mqttServerIP[3]);
-	
-	
+
 	index1 = httpPostRequest.indexOf("mqttPrefix=") + 11;
 	index2 = httpPostRequest.indexOf("&", index1);
 	for (int i= index1, j=0 ; i<index2; i++, j++) 
@@ -362,27 +311,25 @@ void handlePost(){
 	settings.subTopicSet[(index2 - index1 )] = 0;
   
 	#ifdef SERIALDEBUG
-	Serial.println("Valeurs enregistrées:");
-	Serial.println(settings.deviceName);
-	Serial.print(settings.mqttServerIP[0]); 
-	Serial.print(".");
-	Serial.print(settings.mqttServerIP[1]); 
-	Serial.print(".");
-	Serial.print(settings.mqttServerIP[2]);
-	Serial.print(".");
-	Serial.println(settings.mqttServerIP[3]); 
-	Serial.println(settings.mqttPrefix);
-	Serial.println(settings.subTopicStatus);
-	Serial.println(settings.subTopicSet);
-	
-	Serial.println("Effacement mémoire");
+  	Serial.println("Valeurs enregistrées:");
+  	Serial.println(settings.deviceName);
+  	Serial.print(settings.mqttServerIP[0]); 
+  	Serial.print(".");
+  	Serial.print(settings.mqttServerIP[1]); 
+  	Serial.print(".");
+  	Serial.print(settings.mqttServerIP[2]);
+  	Serial.print(".");
+  	Serial.println(settings.mqttServerIP[3]); 
+  	Serial.println(settings.mqttPrefix);
+  	Serial.println(settings.subTopicStatus);
+  	Serial.println(settings.subTopicSet);
+   	Serial.println("Effacement mémoire");
 	#endif
-	
 	
 	for (int i = 0 ; i < STRING_LEN + sizeof(settings) ; i++) EEPROM.write(i, 0);
 	
 	#ifdef SERIALDEBUG
-	Serial.println("Ecriture paramètres");
+	  Serial.println("Ecriture paramètres");
 	#endif
 	
 	EEPROM.update (0, 'O');
@@ -394,12 +341,10 @@ void handlePost(){
 	
 	
 	#ifdef SERIALDEBUG
-	Serial.println("Ecriture terminée. Redémarrrage...");
+	  Serial.println("Ecriture terminée. Redémarrage...");
 	#endif
 	
-	delay(200);
-	
-	NVIC_SystemReset();
+	delay(200);NVIC_SystemReset();
 	
 }
 
@@ -421,32 +366,22 @@ void readStoredVariables(){
 	}
 	
 	if  (strcmp(readString, "OK") != 0){
-			
-			#ifdef SERIALDEBUG
-			Serial.println("Mise à zéro EEPROM");
-			#endif
-			
-			toDefault = true;	
-			EEPROM.update (0, 'O');
-			EEPROM.update(1, 'K');
-			EEPROM.update(2, 0);
-				
-	} else{
 		#ifdef SERIALDEBUG
-		Serial.println("EEPROM déjà initialisée");
+			Serial.println("Mise à zéro EEPROM");
 		#endif
-	}
-		
+			
+		toDefault = true;	
+		EEPROM.update (0, 'O');
+		EEPROM.update(1, 'K');
+		EEPROM.update(2, 0);
+  	} else {
+		#ifdef SERIALDEBUG
+		  Serial.println("EEPROM déjà initialisée");
+		#endif
+	  }
 	if (toDefault) EEPROM.put(STRING_LEN, defaultSettings);
-	
 	EEPROM.get(STRING_LEN, settings);
-	
-	
-	
-	
 }
-
-
 
 void writeResponse(EthernetClient client) {
     
@@ -481,7 +416,7 @@ void writeResponse(EthernetClient client) {
 	for (int i=0 ; i<4 ; i++){
 		client.print(settings.mqttServerIP[i]); 
 		if (i<3) client.print(".");
-	}
+  	}
 	client.print(R"FOO(" /> <br /> <br>
 			<label for="mqttPrefixLabel">Pr&eacute;fixe MQTT :</label><br /> 
 			<input name="mqttPrefix" type="text" value=")FOO");
@@ -501,8 +436,14 @@ void writeResponse(EthernetClient client) {
 
   }
 
-
 void setup() {
+  Serial.begin(115200);
+  #ifdef SERIALDEBUG
+    { long now = millis();Serial.print(now); }
+    Serial.println(" - Begin of SETUP !!!");
+    Serial.print("UniqueID  - ");UniqueIDdump(Serial);
+    Serial.print("UniqueID8 - ");UniqueID8dump(Serial);
+  #endif
   
   // initialize output pins
   for (int pinNumber = 0; pinNumber < OUTPUT_COUNT+1; pinNumber++) {
@@ -510,125 +451,99 @@ void setup() {
     digitalWrite(output[pinNumber], LOW);
 	}
 
-  Serial.begin(115200);
-  delay(200);
-  
   #ifdef SELF_TEST
-    for (int i=1; i<OUTPUT_COUNT+1 ; i++){ digitalWrite(output[i] , 1);delay(20);digitalWrite(output[i], 0); }
-    for (int i=OUTPUT_COUNT; i>=1; i--)  { digitalWrite(output[i] , 1);delay(20);digitalWrite(output[i], 0); }
+    for (int i=0; i<OUTPUT_COUNT+1 ; i++){ digitalWrite(output[i] , 1);delay(10);digitalWrite(output[i], 0); }
+    for (int i=OUTPUT_COUNT; i>=0; i--)  { digitalWrite(output[i] , 1);delay(10);digitalWrite(output[i], 0); }
   #endif
   
-  
-  #ifdef SERIALDEBUG
-    Serial.println("Hello !!!");
-    Serial.print("UniqueID  - ");UniqueIDdump(Serial);
-    Serial.print("UniqueID8 - ");UniqueID8dump(Serial);
-  #endif
-
   mac[0] = 0x00; // UniqueID8[2]; 
   mac[1] = 0x80; // UniqueID8[3]; 
   mac[2] = 0xE1; // UniqueID8[4]; 
   mac[3] = UniqueID8[5]; 
   mac[4] = UniqueID8[6]; 
   mac[5] = UniqueID8[7]; 
-    
-/*  
- // if invalid MAC, change first byte
-  if((mac[0]&0x03)!=2) {   
-    mac[0]&=0xFC;mac[0]|=0x2;
-  }
-*/
 
   #ifdef SERIALDEBUG
     Serial.print("MAC :");
     for (byte octet = 0; octet < 6; octet++) {
-        Serial.print(mac[octet], HEX);
-        if (octet < 5) {
-          Serial.print('-');
-        }
+      Serial.print(mac[octet], HEX);
+      if (octet < 5) Serial.print('-');
       }
-      Serial.println();
+    Serial.println();
   #endif
 
-  
-  
   for(size_t i = 0; i < 8; i++)
-	MQTT_CLIENT_ID[i] = UniqueID8[i]; 
+	  MQTT_CLIENT_ID[i] = UniqueID8[i]; 
   MQTT_CLIENT_ID[8] = 0;
   
 	#ifdef SERIALDEBUG
-  Serial.print("MQTT CLIENT ID:");
-  Serial.println(MQTT_CLIENT_ID);
+    Serial.print("MQTT CLIENT ID:");
+    Serial.println(MQTT_CLIENT_ID);
   #endif
   
   for (int i= 0 ; i<8 ; i++){
-	  
 	  if ( ((uint8_t)MQTT_CLIENT_ID[i] < 48) || ((uint8_t)MQTT_CLIENT_ID[i] > 122) || ( (uint8_t)MQTT_CLIENT_ID[i]>90 && (uint8_t)MQTT_CLIENT_ID[i]<97) || ( (uint8_t)MQTT_CLIENT_ID[i]>57 && (uint8_t)MQTT_CLIENT_ID[i]<65)){
 		  #ifdef SERIALDEBUG
-		  Serial.print("Caractère interdit, remplacé par un A: ");
-		  Serial.println(MQTT_CLIENT_ID[i]);
+  		  Serial.print("Caractère interdit, remplacé par un A: ");
+  		  Serial.println(MQTT_CLIENT_ID[i]);
 		  #endif
-		  
 		  MQTT_CLIENT_ID[i]= 'A';
-	  }
-	  
-  }
+	    }	  
+    }
   #ifdef SERIALDEBUG
-      Serial.print("MQTT CLIENT ID:");
-      Serial.println(MQTT_CLIENT_ID);
+    Serial.print("MQTT CLIENT ID:");
+    Serial.println(MQTT_CLIENT_ID);
   #endif
-	
-
   
   readStoredVariables();
   
   #ifdef SERIALDEBUG
-      Serial.println ("Lecture EEPROM:");
-      Serial.println(settings.deviceName);
-      Serial.print(settings.mqttServerIP[0]); 
-      Serial.print(".");
-      Serial.print(settings.mqttServerIP[1]); 
-      Serial.print(".");
-      Serial.print(settings.mqttServerIP[2]); 
-      Serial.print(".");
-      Serial.println(settings.mqttServerIP[3]); 
-      Serial.println(settings.mqttPrefix);
-      Serial.println(settings.deviceName);
-      Serial.println(settings.subTopicStatus);
-      Serial.println(settings.subTopicSet);
+    { long now = millis(); Serial.print(now); }
+    Serial.println (" - Lecture EEPROM:");
+    Serial.println(settings.deviceName);
+    Serial.print(settings.mqttServerIP[0]); 
+    Serial.print(".");
+    Serial.print(settings.mqttServerIP[1]); 
+    Serial.print(".");
+    Serial.print(settings.mqttServerIP[2]); 
+    Serial.print(".");
+    Serial.println(settings.mqttServerIP[3]); 
+    Serial.println(settings.mqttPrefix);
+    Serial.println(settings.deviceName);
+    Serial.println(settings.subTopicStatus);
+    Serial.println(settings.subTopicSet);
   #endif
   
   #ifdef SERIALDEBUG
-      Serial.println("Initialisation Ethernet...") ;
+    { long now = millis(); Serial.print(now); }
+    Serial.println(" - Ethernet Initialisation...") ;
 	#endif
 	
   // start the Ethernet connection and the server:  
   Ethernet.init(ETH_CS_PIN);
+//  Ethernet.hostName(settings.deviceName);
   Ethernet.begin(mac);
 
   // Check for Ethernet hardware present
   if (Ethernet.hardwareStatus() == EthernetNoHardware) {
-	  Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
     while (true) {
-      delay(1); // do nothing, no point running without Ethernet hardware
+      Serial.println("Ethernet shield was not found.  Sorry, can't run without hardware. :(");
+      delay(1000); // do nothing, no point running without Ethernet hardware
+      }
     }
-  }
-  if (Ethernet.linkStatus() == LinkOFF) {
-	  Serial.println("Ethernet cable is not connected.");
-  }
+  if (Ethernet.linkStatus() == LinkOFF) Serial.println("Ethernet cable is not connected.");
 
   // start the server
   server.begin();
   #ifdef SERIALDEBUG
-  Serial.print("My IP Address is ");
-  Serial.println(Ethernet.localIP());
+    { long now = millis(); Serial.print(now); }
+    Serial.print(" - My IP Address is ");
+    Serial.println(Ethernet.localIP());
   #endif
   
-  //delay(1500);
-  
-  	#ifdef SERIALDEBUG
-   Serial.println("OK");
-   Serial.println("Initialisation MQTT... ") ;
+ 	#ifdef SERIALDEBUG
+    { long now = millis(); Serial.print(now); }
+    Serial.println(" - Initialisation MQTT... ") ;
 	#endif
 
 	
@@ -645,33 +560,38 @@ void setup() {
 	lastReconnectAttempt = 0;
 	
 	#ifdef SERIALDEBUG
-	Serial.println("Fin de l'initialisation");
-    #endif
+	  { long now = millis(); Serial.print(now); }
+	  Serial.println(" - End of SETUP");
+  #endif
 }
 
 
 void loop() {
 	
 	if (needReset){
-		Serial.println("Rebooting.");
-		NVIC_SystemReset();  
+    long now = millis();
+    Serial.print(now);
+		Serial.println(" - Rebooting...");
+    delay(200);NVIC_SystemReset();
 	}
   
 	if (!mqttClient.connected()) {
     long now = millis();
-    if (now - lastReconnectAttempt > 5000) {
+    if (now - lastReconnectAttempt > 1000) {
       lastReconnectAttempt = now;
       // Attempt to reconnect
       #ifdef SERIALDEBUG
-	  Serial.println ("MQTT connecting...");
-	  #endif
+        Serial.print(now);
+	      Serial.println (" - MQTT connecting...");
+	    #endif
 	  
 	  if (mqttReconnect()) {
-        #ifdef SERIALDEBUG
-		Serial.println ("MQTT connected");
-		#endif
+      #ifdef SERIALDEBUG
+		    Serial.print(now);
+        Serial.println (" - MQTT connected !!");
+		  #endif
 		
-		lastReconnectAttempt = 0;
+		  lastReconnectAttempt = 0;
       }
     }
   } else {
@@ -682,7 +602,7 @@ void loop() {
   // listen for incoming clients
   client = server.available();
   if (client) {  // got client?
-        bool currentLineIsBlank = true;
+    bool currentLineIsBlank = true;
 		String req_str = "";
 		int data_length = -1;
 		bool skip = true;
