@@ -33,7 +33,7 @@ const int MQTT_PORT = 1883 ;
 char dynamicTopic [MQTT_STRING_LEN];
 long MQTT_LastReconnectAttempt = 0;              // For automatic reconnection, non-blocking
 long MQTT_LastUptimeSent = 0;                        // For sending MQTT Uptime every nn seconds
-long MQTT_LoopCount = 0;                             // For counting loop runs in the nn seconds timeframe
+long MQTT_LoopIterationCount = 0;                    // For counting loop runs in the nn seconds timeframe
 
 
 uint8_t output[] = {
@@ -139,7 +139,7 @@ void MQTT_SendUptime() {
     #ifdef SERIALDEBUG1
       { long now = millis(); Serial.print(now); }
       Serial.print (" - uptime: "); Serial.print (millis() / 1000);
-      Serial.print (" - LoopCount: "); Serial.print (MQTT_LoopCount);
+      Serial.print (" - LoopIterationCount: "); Serial.print (MQTT_LoopIterationCount);
       Serial.print (" - freeMemory: "); Serial.println(freeMemory());
 
     
@@ -669,8 +669,8 @@ void loop() {
     if (now - MQTT_LastUptimeSent >= 10000) {
       MQTT_LastUptimeSent = now;
       MQTT_SendUptime();
-      MQTT_LoopCount=0;
-    } else MQTT_LoopCount++;
+      MQTT_LoopIterationCount=0;
+    } else MQTT_LoopIterationCount++;
     mqttClient.loop();
   }
 
