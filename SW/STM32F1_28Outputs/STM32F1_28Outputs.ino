@@ -9,7 +9,10 @@
  *                  - HTTP Publish Output + Uptime
  *                  - HTTP set Output
  *                  - Watchdog                        DONE
- *                  - DHCP Hostname & Freebox issue                  
+ *                  - DHCP Hostname & Freebox issue             
+ *                  - Vérifier memory leak
+ *                  - Activer/désactiver la configuration HTTP depuis une commande MQTT
+ *                  - Vérifier persistance des sorties après reboot (MQTT persistance)
  */
 
 #include <SPI.h>
@@ -29,6 +32,8 @@ bool IWatchdog_isReset=false;
 const int MQTT_PORT = 1883 ;
 char dynamicTopic [MQTT_STRING_LEN];
 long MQTT_LastReconnectAttempt = 0;              // For automatic reconnection, non-blocking
+long MQTT_LastUptimeSent = 0;                        // For sending MQTT Uptime every nn seconds
+long MQTT_LoopCount = 0;                             // For counting loop runs in the nn seconds timeframe
 
 
 uint8_t output[] = {
@@ -107,6 +112,24 @@ bool MQTT_Reconnect() {              // Code to test the MQTT connection and rec
   return mqttClient.connected();
 }
 
+#ifdef __arm__
+// should use uinstd.h to define sbrk but Due causes a conflict
+extern "C" char* sbrk(int incr);
+#else  // __ARM__
+extern char *__brkval;
+#endif  // __arm__
+ 
+int freeMemory() {
+  char top;
+#ifdef __arm__
+  return &top - reinterpret_cast<char*>(sbrk(0));
+#elif defined(CORE_TEENSY) || (ARDUINO > 103 && ARDUINO != 151)
+  return &top - __brkval;
+#else  // __arm__
+  return __brkval ? &top - __brkval : &top - __malloc_heap_start;
+#endif  // __arm__
+}
+
 void MQTT_SendUptime() {
     char topicOut[MQTT_STRING_LEN] ;  
     strcpy (topicOut, dynamicTopic);
@@ -115,8 +138,11 @@ void MQTT_SendUptime() {
     
     #ifdef SERIALDEBUG1
       { long now = millis(); Serial.print(now); }
-      Serial.print (" - uptime: ") ;
-      Serial.println (millis() / 1000);
+      Serial.print (" - uptime: "); Serial.print (millis() / 1000);
+      Serial.print (" - LoopCount: "); Serial.print (MQTT_LoopCount);
+      Serial.print (" - freeMemory: "); Serial.println(freeMemory());
+
+    
     #endif
     }
 
@@ -608,9 +634,6 @@ void setup() {
   #endif
 }
 
-
-long MQTT_LastUptimeSent = 0;                        // For sending MQTT Uptime every nn seconds
-
 void loop() {
 	
 	IWatchdog.reload(); // Recharge le watchdog !!
@@ -646,7 +669,8 @@ void loop() {
     if (now - MQTT_LastUptimeSent >= 10000) {
       MQTT_LastUptimeSent = now;
       MQTT_SendUptime();
-    }
+      MQTT_LoopCount=0;
+    } else MQTT_LoopCount++;
     mqttClient.loop();
   }
 
