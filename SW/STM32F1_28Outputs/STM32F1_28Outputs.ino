@@ -1,16 +1,18 @@
 #define SERIALDEBUG1    // Comment to remove serial debugging info level 1
+//#define SERIALDEBUG2    // Comment to remove serial debugging info level 2
 //#define SERIALDEBUG9    // Comment to remove serial debugging info level 9
 #define SELF_TEST       // teste toutes les sorties au démarrage
 #define KEEP_BUG        // ne corrige pas le bug des channels 29 et +
 
 /*
- * Reste à faire :  - Faire flasher Output[0] chaque seconde
- *                  - MQTT Publish Uptime             En Cours
- *                  - HTTP Publish Output + Uptime
+ * Reste à faire :  - Faire flasher Output[0] chaque seconde    DONE
+ *                  - MQTT Publish Uptime                       En Cours
+ *                  - HTTP Publish Uptime
+ *                  - HTTP Publish Output                       DONE 
  *                  - HTTP set Output
- *                  - Watchdog                        DONE
+ *                  - Watchdog                                  DONE
  *                  - DHCP Hostname & Freebox issue             
- *                  - Vérifier memory leak
+ *                  - Vérifier memory leak                      DONE
  *                  - Activer/désactiver la configuration HTTP depuis une commande MQTT
  *                  - Vérifier persistance des sorties après reboot (MQTT persistance)
  */
@@ -34,6 +36,7 @@ char dynamicTopic [MQTT_STRING_LEN];
 long MQTT_LastReconnectAttempt = 0;              // For automatic reconnection, non-blocking
 long MQTT_LastUptimeSent = 0;                        // For sending MQTT Uptime every nn seconds
 long MQTT_LoopIterationCount = 0;                    // For counting loop runs in the nn seconds timeframe
+long BlinkStatus = 0;                            // Use to make Blink Status LED once each second
 
 
 uint8_t output[] = {
@@ -148,7 +151,7 @@ void MQTT_SendUptime() {
 
 void mqttCallback (char* topic , byte* payload , unsigned int length) {			// We will place here all that happens when a message is received on the subscribed MQTT topic(s) 
 
-	#ifdef SERIALDEBUG1
+	#ifdef SERIALDEBUG2
 		Serial.print ("Nouveau message, topic: ") ;
 		Serial.println(topic);
 	
@@ -451,50 +454,92 @@ void writeHTTPResponse(EthernetClient client) {	// send a standard http response
   client.println("Content-Type: text/html");
   client.println("Connection: close");  // the connection will be closed after completion of the response
   client.println();
-	client.print(R"FOO(<!DOCTYPE html><html><head><title>Module sortie relais: r&eacute;glages</title></head><body>)FOO");
-	client.print(R"FOO(<p>Connexion MQTT: <span style="color: )FOO");
-	if (mqttClient.connected())	client.print(R"FOO(#339966;">OK </span></p>)FOO"); else client.print(R"FOO(#ff0000;">absente</span></p>)FOO");
-	client.print(R"FOO(<p>Topics MQTT:</p><p>Base:&nbsp;)FOO");
-	client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/");
-	client.print (R"FOO(</p><p>Statut:&nbsp;)FOO");
-	client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/"); client.print(settings.subTopicStatus); client.print("/");
-  client.print(R"FOO(</p><p>Actions:&nbsp;)FOO");
-  client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/(canal 1-28)/");client.print(settings.subTopicSet); client.print("/");
-  client.print(R"FOO(</p><p>Uptime:&nbsp;)FOO");
-  client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/"); client.print(settings.subTopicUptime); client.print("/");
-	client.print(R"FOO(</p><p></p>)FOO");
-	client.print(R"FOO(<fieldset><legend><h1>Mise &agrave; jour param&egrave;tres MQTT :</h1></legend> 
-		<form accept-charset="UTF-8" autocomplete="off" method="POST">
-		<label for="deviceNameLabel">Nom :</label><br /> 
-		<input name="deviceName" type="text" value=")FOO");
-	client.print(settings.deviceName);
-	client.print(R"FOO(" /> <br /> <br>
-		<label for="serverIPLabel">Adresse serveur MQTT :</label><br /> 
-		<input name="mqttServerIP" type="text" value=")FOO");
-	for (int i=0 ; i<4 ; i++){
-		client.print(settings.mqttServerIP[i]); 
-		if (i<3) client.print(".");
-  	}
-	client.print(R"FOO(" /> <br /> <br>
-		<label for="mqttPrefixLabel">Pr&eacute;fixe MQTT :</label><br /> 
-		<input name="mqttPrefix" type="text" value=")FOO");
-	client.print(settings.mqttPrefix);
-	client.print(R"FOO(" /> <br /> <br>
-		<label for="supTopicStatusLabel">Sous-topic retour d'&eacute;tat :</label><br /> 
-		<input name="subTopicStatus" type="text" value=")FOO");
-	client.print(settings.subTopicStatus);
-  client.print(R"FOO(" /> <br /> <br>
-      <label for="subTopicSetLabel">Sous-topic action :</label><br /> 
-      <input name="subTopicSet" type="text" value=")FOO");
-  client.print(settings.subTopicSet);
-  client.print(R"FOO(" /> <br /> <br>
-      <label for="subTopicUptimeLabel">Sous-topic uptime :</label><br /> 
-      <input name="subTopicUptime" type="text" value=")FOO");
-  client.print(settings.subTopicUptime);
-  client.print(R"FOO(" /> <br /> <br>
-		<button type="submit" value="Submit">Valider les modifications et red&eacute;marrer</button>
-		</fieldset>
-		</form>)FOO");
+	client.println(R"FOO(<!DOCTYPE html><html><head><title>Module sortie relais: r&eacute;glages</title></head><body>)FOO");
+
+  client.println("<fieldset><legend><h2>Etat des sorties :</h2></legend>");
+
+  client.println(R"FOO(<table border="1" style="border-collapse: collapse; width: 100%;">)FOO");
+
+  client.println("<tr>");
+	for (int pinNumber = 0; pinNumber < OUTPUT_COUNT+1; pinNumber++) {
+    client.print(R"FOO(<td style="text-align: center;">)FOO");
+	  client.print(pinNumber);
+	  client.println("</td>");   
+	}
+  client.println("</tr><tr>");
+  for (int pinNumber = 0; pinNumber < OUTPUT_COUNT+1; pinNumber++) {
+    client.print(R"FOO(<td style="text-align: center;">)FOO");
+    if (isON[pinNumber])
+      client.print(R"FOO(<span style="color:#339966;"><strong>ON</strong></span>)FOO");
+      else
+      client.print(R"FOO(<span style="color:#ff0000;">OFF</span>)FOO");
+      
+    client.println("</td>");
+	}
+  client.println("</tr></table>");
+  client.println("<p></p></fieldset>");
+	
+  client.println("<fieldset><legend><h2>Param&egrave;tres actuels :</h2></legend>");
+    client.print("<p>Uptime: "); client.print(millis()/1000); client.println("s </p>");
+    client.print("<p>freeMemory: "); client.print(freeMemory()); client.println("</p>");
+    client.print("<p>Adresse MAC: ");
+      client.print(mac[0], HEX);client.print("-");
+      client.print(mac[1], HEX);client.print("-");
+      client.print(mac[2], HEX);client.print("-<strong>");
+      client.print(mac[3], HEX);client.print("-");
+      client.print(mac[4], HEX);client.print("-");
+      client.print(mac[5], HEX);client.println("</strong></p>");
+    client.print("<p>Adresse IP: ");client.print(Ethernet.localIP());client.println("</p>");
+    
+    client.print(R"FOO(<p>Connexion MQTT: <span style="color: )FOO");
+    if (mqttClient.connected()) client.println(R"FOO(#339966;">OK </span></p>)FOO"); else client.println(R"FOO(#ff0000;">absente</span></p>)FOO");	
+  	client.print(R"FOO(<p>Topics MQTT:</p><ul><li>Base:&nbsp;)FOO");
+  	client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.println("/");
+  	client.print (R"FOO(</li><li>Status:&nbsp;)FOO");
+  	client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/"); client.print(settings.subTopicStatus); client.println("/");
+    client.print(R"FOO(</li><li>Actions:&nbsp;)FOO");
+    client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/(canal 0-28)/");client.print(settings.subTopicSet); client.println("/");
+    client.print(R"FOO(</li><li>Uptime:&nbsp;)FOO");
+    client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/"); client.print(settings.subTopicUptime); client.println("/");
+	client.println("</li></ul><p></p></fieldset>");
+
+
+//XXXXXXXXX
+    
+  client.print(R"FOO(<fieldset><legend><h2>Mise &agrave; jour des param&egrave;tres MQTT :</h2></legend> 
+    <form accept-charset="UTF-8" autocomplete="off" method="POST">
+    <table>
+    <tr>
+    <td><label for="deviceNameLabel">Nom :</label></td> 
+    <td><input name="deviceName" type="text" value=")FOO");
+  client.print(settings.deviceName);client.print(R"FOO(" /></td>
+    </tr><tr>
+    <td><label for="serverIPLabel">Adresse serveur MQTT :</label></td> 
+    <td><input name="mqttServerIP" type="text" value=")FOO");
+  for (int i=0 ; i<4 ; i++){client.print(settings.mqttServerIP[i]);if (i<3) client.print(".");}
+  client.print(R"FOO(" /> </td>
+    </tr><tr>
+    <td><label for="mqttPrefixLabel">Pr&eacute;fixe MQTT :</label></td>
+    <td><input name="mqttPrefix" type="text" value=")FOO");
+  client.print(settings.mqttPrefix);client.print(R"FOO(" /> </td>
+    </tr><tr>
+    <td><label for="supTopicStatusLabel">Sous-topic retour d'&eacute;tat :</label></td>
+    <td><input name="subTopicStatus" type="text" value=")FOO");
+  client.print(settings.subTopicStatus);client.print(R"FOO(" /> </td>
+    </tr><tr>
+    <td><label for="subTopicSetLabel">Sous-topic action :</label></td>
+    <td><input name="subTopicSet" type="text" value=")FOO");
+  client.print(settings.subTopicSet);client.print(R"FOO(" /> </td>
+    </tr><tr>
+    <td><label for="subTopicUptimeLabel">Sous-topic uptime :</label></td> 
+    <td><input name="subTopicUptime" type="text" value=")FOO");
+  client.print(settings.subTopicUptime);client.print(R"FOO(" /> </td>
+    </tr>
+    </table>
+    <button type="submit" value="Submit">Valider les modifications et red&eacute;marrer</button>
+    </fieldset>
+    </form>)FOO");
+    
   }
 
 void setup() {
@@ -666,10 +711,14 @@ void loop() {
   } else {
     // Client connected
     long now = millis();
+
+    if (now - BlinkStatus >= 50) {
+      if (now - BlinkStatus < 100) { digitalWrite(output[0], isON[0]); BlinkStatus-=51; }
+      if (now - BlinkStatus >= 1050) { digitalWrite(output[0], !isON[0]); BlinkStatus = now; }
+      }
+    
     if (now - MQTT_LastUptimeSent >= 10000) {
-      MQTT_LastUptimeSent = now;
-      MQTT_SendUptime();
-      MQTT_LoopIterationCount=0;
+      MQTT_LastUptimeSent = now; MQTT_SendUptime(); MQTT_LoopIterationCount=0;
     } else MQTT_LoopIterationCount++;
     mqttClient.loop();
   }
@@ -734,7 +783,6 @@ void loop() {
             } // end if (HTTPEthernetClient.available())
         } // end while (HTTPEthernetClient.connected())
 		
-    //delay(1);      // give the web browser time to receive the data
     HTTPEthernetClient.stop(); // close the connection
 	
 	if (dataPresent){
