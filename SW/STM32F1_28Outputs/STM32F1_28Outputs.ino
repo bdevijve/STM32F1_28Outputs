@@ -17,6 +17,25 @@
  *                  - Vérifier persistance des sorties après reboot (MQTT persistance)
  */
 
+
+ /*
+  * 
+            61290000 - uptime: 61290 - LoopIterationCount: 43554 - freeMemory: 59019
+            61300000 - uptime: 61300 - LoopIterationCount: 43553 - freeMemory: 59019
+            61310000 - uptime: 61310 - LoopIterationCount: 43556 - freeMemory: 59019
+            61320000 - uptime: 61320 - LoopIterationCount: 43554 - freeMemory: 59019
+            61330000 - uptime: 61330 - LoopIterationCount: 43553 - freeMemory: 59019
+            61340000 - uptime: 61340 - LoopIterationCount: 39019 - freeMemory: 58483
+            61350000 - uptime: 61350 - LoopIterationCount: 36421 - freeMemory: 58483
+            61360000 - uptime: 61360 - LoopIterationCount: 36040 - freeMemory: 58483
+            61370000 - uptime: 61370 - LoopIterationCount: 43555 - freeMemory: 58483
+            61380000 - uptime: 61380 - LoopIterationCount: 43554 - freeMemory: 58483
+            61390000 - uptime: 61390 - LoopIterationCount: 43554 - freeMemory: 58483
+            61400000 - uptime: 61400 - LoopIterationCount: 43555 - freeMemory: 58483
+            61410000 - uptime: 61410 - LoopIterationCount: 43554 - freeMemory: 58483
+  * 
+  */
+
 #include <SPI.h>
 #include <Ethernet.h>
 #include <EEPROM.h>
