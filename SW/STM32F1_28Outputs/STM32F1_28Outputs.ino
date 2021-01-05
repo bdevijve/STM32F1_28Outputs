@@ -6,13 +6,16 @@
 
 /*
  * Reste à faire :  - Faire flasher Output[0] chaque seconde    DONE
- *                  - MQTT Publish Uptime                       En Cours
- *                  - HTTP Publish Uptime
  *                  - HTTP Publish Output                       DONE 
- *                  - HTTP set Output
  *                  - Watchdog                                  DONE
- *                  - DHCP Hostname & Freebox issue             
  *                  - Vérifier memory leak                      DONE
+ *                  - HTTP Publish Uptime                       DONE
+ *                  - HTTP Publish FreeMemory                   DONE
+ *                  - Mettre tous les GPIO en PullDown
+ *                  - MQTT Publish Uptime                       En Cours
+ *                  - MQTT Publish FreeMemory                   En Cours
+ *                  - HTTP set Output
+ *                  - DHCP Hostname & Freebox issue             
  *                  - Activer/désactiver la configuration HTTP depuis une commande MQTT
  *                  - Vérifier persistance des sorties après reboot (MQTT persistance)
  */
@@ -36,8 +39,11 @@
   * 
   */
 
-#include <SPI.h>
 #include <Ethernet.h>
+//#include <SPI.h>
+//#include <LwIP.h>
+//#include <STM32Ethernet.h>
+
 #include <EEPROM.h>
 #include <Wire.h>
 #include <PubSubClient.h>     // Library from https://github.com/knolleary/pubsubclient (Standard on the Arduino IDE Library Manager)
@@ -46,7 +52,7 @@
 
 #define STRING_LEN 30
 #define MQTT_STRING_LEN 128
-#define OUTPUT_COUNT 28
+#define OUTPUT_COUNT 28       // Nb de sortie externe réel, sachant que la LED interne d'état sera comptabilisé en +
 
 bool IWatchdog_isReset=false;
 
@@ -57,16 +63,24 @@ long MQTT_LastUptimeSent = 0;                        // For sending MQTT Uptime 
 long MQTT_LoopIterationCount = 0;                    // For counting loop runs in the nn seconds timeframe
 long BlinkStatus = 0;                            // Use to make Blink Status LED once each second
 
+uint16_t GPIOINIT_TABLE[] = {
+  PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7, PA8, PA9, PA10, PA11, PA12, PA13, PA14, PA15,
+  PB0, PB1, PB2, PB3, PB4, PB5, PB6, PB7, PB8, PB9, PB10, PB11, PB12, PB13, PB14, PB15,
+  PC0, PC1, PC2, PC3, PC4, PC5, PC6, PC7, PC8, PC9, PC10, PC11, PC12, PC13, PC14, PC15,
+  PD0, PD1, PD2, PD3, PD4, PD5, PD6, PD7, PD8, PD9, PD10, PD11, PD12, PD13, PD14, PD15,
+  PE0, PE1, PE2, PE3, PE4, PE5, PE6, PE7, PE8, PE9, PE10, PE11, PE12, PE13, PE14, PE15,
+  0xffff
+};
 
 uint8_t output[] = {
-PC13, PE12, PE13, PE14, PB8, PA0, PA1, PA2, PA3, PB9, PB0, PB1, PE8, PE9, PE10, PE11, PB4, PB3, PA15, PB10, PB11, PD12, PD13, PD14, PD15, PC6, PC7, PC8, PC9
+  PC13, PE12, PE13, PE14, PB8, PA0, PA1, PA2, PA3, PB9, PB0, PB1, PE8, PE9, PE10, PE11, PB4, PB3, PA15, PB10, PB11, PD12, PD13, PD14, PD15, PC6, PC7, PC8, PC9
 };
+
+
 
 char MQTT_CLIENT_ID[STRING_LEN] ; 
 
 byte mac[] = {0x00, 0x80, 0xE1, 0x03, 0x04, 0x05} ; 
-
-IPAddress ip(192, 168, 1, 177);
 
 #define ETH_CS_PIN PA4
 #define STATUS_PIN PC13
@@ -561,7 +575,18 @@ void writeHTTPResponse(EthernetClient client) {	// send a standard http response
     
   }
 
+
+
+
 void setup() {
+
+  
+  { // initialize ALL GPIO pins to INPUT_PULLUP in order to limit interrupt on floating PINs
+    int pinNumber = 0;
+    while ( GPIOINIT_TABLE[pinNumber] != 0xffff ) pinMode(GPIOINIT_TABLE[pinNumber++], INPUT_PULLUP);
+  }
+//    for (int ; pinNumber < 80; pinNumber++) pinMode(GPIOINIT_TABLE[pinNumber], INPUT_PULLUP);
+  
   Serial.begin(115200);
   IWatchdog_isReset=IWatchdog.isReset(true);
 
@@ -573,7 +598,8 @@ void setup() {
     Serial.print("UniqueID  - ");UniqueIDdump(Serial);
     Serial.print("UniqueID8 - ");UniqueID8dump(Serial);
   #endif
-  
+
+
   // initialize output pins
   for (int pinNumber = 0; pinNumber < OUTPUT_COUNT+1; pinNumber++) {
     pinMode(output[pinNumber], OUTPUT);
@@ -646,7 +672,7 @@ void setup() {
 	#endif
 	
   // start the Ethernet connection and the server:  
-  Ethernet.init(ETH_CS_PIN);
+Ethernet.init(ETH_CS_PIN);
 //  Ethernet.hostName(settings.deviceName);
   Ethernet.begin(mac);
 
