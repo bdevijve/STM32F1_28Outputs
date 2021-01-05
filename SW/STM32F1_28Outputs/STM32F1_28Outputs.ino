@@ -5,15 +5,16 @@
 #define KEEP_BUG        // ne corrige pas le bug des channels 29 et +
 
 /*
- * Reste à faire :  - Faire flasher Output[0] chaque seconde    DONE
- *                  - HTTP Publish Output                       DONE 
- *                  - Watchdog                                  DONE
- *                  - Vérifier memory leak                      DONE
- *                  - HTTP Publish Uptime                       DONE
- *                  - HTTP Publish FreeMemory                   DONE
- *                  - Mettre tous les GPIO en PullDown
- *                  - MQTT Publish Uptime                       En Cours
- *                  - MQTT Publish FreeMemory                   En Cours
+ * Reste à faire :  - Faire flasher Output[0] chaque seconde                                        DONE
+ *                  - HTTP Publish Output                                                           DONE 
+ *                  - Watchdog                                                                      DONE
+ *                  - Vérifier memory leak                                                          DONE
+ *                  - HTTP Publish Uptime                                                           DONE
+ *                  - HTTP Publish FreeMemory                                                       DONE
+ *                  - Mettre tous les GPIO en INPUT_PULLUP                                          DONE
+ *                  - MQTT Publish Uptime                                                           En Cours
+ *                  - MQTT Publish FreeMemory                                                       En Cours
+ *                  - Faire flasher Output[0] rapidement tant que l'init n'est pas terminé
  *                  - HTTP set Output
  *                  - DHCP Hostname & Freebox issue             
  *                  - Activer/désactiver la configuration HTTP depuis une commande MQTT
@@ -43,9 +44,9 @@
 //#include <SPI.h>
 //#include <LwIP.h>
 //#include <STM32Ethernet.h>
+//#include <Wire.h>
 
 #include <EEPROM.h>
-#include <Wire.h>
 #include <PubSubClient.h>     // Library from https://github.com/knolleary/pubsubclient (Standard on the Arduino IDE Library Manager)
 #include <ArduinoUniqueID.h>  // Library from https://github.com/ricaun/ArduinoUniqueID (Standard on the Arduino IDE Library Manager)
 #include <IWatchdog.h>        // Library included in Arduino_Core_STM32 version > 1.3.0
@@ -72,7 +73,7 @@ uint16_t GPIOINIT_TABLE[] = {
   0xffff
 };
 
-uint8_t output[] = {
+uint8_t GPIO_OUTPUT[] = {
   PC13, PE12, PE13, PE14, PB8, PA0, PA1, PA2, PA3, PB9, PB0, PB1, PE8, PE9, PE10, PE11, PB4, PB3, PA15, PB10, PB11, PD12, PD13, PD14, PD15, PC6, PC7, PC8, PC9
 };
 
@@ -329,7 +330,7 @@ void doON(uint8_t channel){
 	char topicOut [MQTT_STRING_LEN];
 	char convert [5];
 		
-	digitalWrite(output[channel], 1);
+	digitalWrite(GPIO_OUTPUT[channel], 1);
  	
 	strcpy (topicOut,dynamicTopic);
 	sprintf (convert, "%i", channel);
@@ -351,7 +352,7 @@ void doOFF(uint8_t channel){
 	char topicOut [MQTT_STRING_LEN];
 	char convert [5];
 	
-	digitalWrite(output[channel], 0);
+	digitalWrite(GPIO_OUTPUT[channel], 0);
 
 	strcpy (topicOut,dynamicTopic);
 	sprintf (convert, "%i", channel);
@@ -575,9 +576,6 @@ void writeHTTPResponse(EthernetClient client) {	// send a standard http response
     
   }
 
-
-
-
 void setup() {
 
   
@@ -602,14 +600,20 @@ void setup() {
 
   // initialize output pins
   for (int pinNumber = 0; pinNumber < OUTPUT_COUNT+1; pinNumber++) {
-    pinMode(output[pinNumber], OUTPUT);
-    digitalWrite(output[pinNumber], LOW);
+    pinMode(GPIO_OUTPUT[pinNumber], OUTPUT);
+    digitalWrite(GPIO_OUTPUT[pinNumber], LOW);
 	}
 
+
   #ifdef SELF_TEST
-    for (int i=0; i<OUTPUT_COUNT+1 ; i++){ digitalWrite(output[i] , 1);delay(10);digitalWrite(output[i], 0); }
-    for (int i=OUTPUT_COUNT; i>=0; i--)  { digitalWrite(output[i] , 1);delay(10);digitalWrite(output[i], 0); }
+    for (int i=0; i<OUTPUT_COUNT+1 ; i++){ digitalWrite(GPIO_OUTPUT[i] , 1);delay(10);digitalWrite(GPIO_OUTPUT[i], 0); }
+    for (int i=OUTPUT_COUNT; i>=0; i--)  { digitalWrite(GPIO_OUTPUT[i] , 1);delay(10);digitalWrite(GPIO_OUTPUT[i], 0); }
   #endif
+
+
+//// MAKE BLINK FAST HERE
+
+
   
   mac[0] = 0x00; // UniqueID8[2]; 
   mac[1] = 0x80; // UniqueID8[3]; 
@@ -758,8 +762,8 @@ void loop() {
     long now = millis();
 
     if (now - BlinkStatus >= 50) {
-      if (now - BlinkStatus < 100) { digitalWrite(output[0], isON[0]); BlinkStatus-=51; }
-      if (now - BlinkStatus >= 1050) { digitalWrite(output[0], !isON[0]); BlinkStatus = now; }
+      if (now - BlinkStatus < 100) { digitalWrite(GPIO_OUTPUT[0], isON[0]); BlinkStatus-=51; }
+      if (now - BlinkStatus >= 1050) { digitalWrite(GPIO_OUTPUT[0], !isON[0]); BlinkStatus = now; }
       }
     
     if (now - MQTT_LastUptimeSent >= 10000) {
