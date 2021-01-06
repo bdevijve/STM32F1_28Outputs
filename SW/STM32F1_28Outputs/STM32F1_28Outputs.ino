@@ -5,15 +5,16 @@
 #define KEEP_BUG        // ne corrige pas le bug des channels 29 et +
 
 /*
- * Reste à faire :  - Faire flasher Output[0] chaque seconde                                        DONE
- *                  - HTTP Publish Output                                                           DONE 
- *                  - Watchdog                                                                      DONE
- *                  - Vérifier memory leak                                                          DONE
- *                  - HTTP Publish Uptime                                                           DONE
- *                  - HTTP Publish FreeMemory                                                       DONE
- *                  - Mettre tous les GPIO en INPUT_PULLUP                                          DONE
- *                  - MQTT Publish Uptime                                                           En Cours
- *                  - MQTT Publish FreeMemory                                                       En Cours
+ * Reste à faire :  - Faire flasher Output[0] chaque seconde pendant la boucle loop si tout est OK      DONE
+ *                  - HTTP Publish Output                                                               DONE 
+ *                  - Watchdog                                                                          DONE
+ *                  - Vérifier memory leak                                                              DONE
+ *                  - HTTP Publish Uptime                                                               DONE
+ *                  - HTTP Publish FreeMemory                                                           DONE
+ *                  - Mettre tous les GPIO en INPUT_PULLUP                                              DONE
+ *                  - Nettoyage profond de la fonction d'accès à l'EEPROM et de la structure Settings   DONE
+ *                  - MQTT Publish Uptime                                                               En Cours
+ *                  - MQTT Publish FreeMemory                                                           En Cours
  *                  - Faire flasher Output[0] rapidement tant que l'init n'est pas terminé
  *                  - HTTP set Output
  *                  - DHCP Hostname & Freebox issue             
@@ -98,31 +99,22 @@ PubSubClient mqttClient (MqttEthernetClient);
 #define MaxHeaderLength 350    //maximum length of http header required
 String httpPostRequest = String(MaxHeaderLength);
 
-#define defaultDeviceName       "carte1"
-#define defaultMqttServerIP 192,168,1,22
-#define defaultMqttPrefix       "carterelais"
-#define defaultSubTopicStatus   "status" 
-#define defaultSubTopicSet      "set"
-#define defaultSubTopicUptime   "uptime"
-
-struct mySettings {	
-	char deviceName     [STRING_LEN] ;
-	IPAddress mqttServerIP;
-	char mqttPrefix     [STRING_LEN] ;
-	char subTopicStatus [STRING_LEN] ;
-  char subTopicSet    [STRING_LEN] ;
-  char subTopicUptime [STRING_LEN] ;
+struct STRUCT_Settings {
+	char deviceName     [STRING_LEN];
+	IPAddress mqttServerIP          ;
+	char mqttPrefix     [STRING_LEN];
+	char subTopicStatus [STRING_LEN];
+  char subTopicSet    [STRING_LEN];
+  char subTopicUptime [STRING_LEN];
 };
 
-struct mySettings settings;
-
-struct mySettings defaultSettings = (mySettings) {
-	defaultDeviceName,
+struct STRUCT_Settings settings = (STRUCT_Settings) {
+	"carte1",
 	IPAddress(192,168,1,22),
-	defaultMqttPrefix,
-	defaultSubTopicStatus, 
-  defaultSubTopicSet,
-  defaultSubTopicUptime
+	"carterelais",
+	"status", 
+  "set",
+  "uptime"
 };
 
 bool needReset = false;
@@ -416,36 +408,31 @@ void handleHTTPPost() {
   #endif
 
   #ifdef SERIALDEBUG1
-    { long now = millis(); Serial.print(now); }
-   	Serial.println(" - EEPROM - Effacement Signature -XX- ");
+    { long now = millis(); Serial.print(now); } Serial.println(" - EEPROM - Effacement Signature -XX- ");
 	#endif
   
   IWatchdog.reload();EEPROM.put(0, "XX");
   	
 	#ifdef SERIALDEBUG1
-    { long now = millis(); Serial.print(now); }
-	  Serial.println(" - EEPROM - Ecriture paramètres");
+    { long now = millis(); Serial.print(now); } Serial.println(" - EEPROM - Ecriture paramètres");
 	#endif
 	
   IWatchdog.reload();EEPROM.put(STRING_LEN, settings);
 
-    #ifdef SERIALDEBUG1
-    { long now = millis(); Serial.print(now); }
-    Serial.println(" - EEPROM - Ecriture Signature OK");
+  #ifdef SERIALDEBUG1
+    { long now = millis(); Serial.print(now); }  Serial.println(" - EEPROM - Ecriture Signature OK");
   #endif
 
   IWatchdog.reload();EEPROM.put(0, "OK");
 		
 	#ifdef SERIALDEBUG1
-    { long now = millis(); Serial.print(now); }
-	  Serial.println(" - EEPROM - Toutes les écritures sont terminées");
+    { long now = millis(); Serial.print(now); }  Serial.println(" - EEPROM - Toutes les écritures sont terminées");
 	#endif
 
 	delay(200);
  
   #ifdef SERIALDEBUG1
-    { long now = millis(); Serial.print(now); }    
-    Serial.println(" - Redémarrage...");
+    { long now = millis(); Serial.print(now); }  Serial.println(" - Redémarrage...");
   #endif
   
 	NVIC_SystemReset();
@@ -456,10 +443,6 @@ void handleHTTPPost() {
 void readStoredVariables() {
 	char buf ;
 	char readString [STRING_LEN];
-	bool toDefault = false;
-	
-	//Serial.println("Effacement mémoire...");
-	//for (int i = 0 ; i < STRING_LEN + sizeof(settings) ; i++) EEPROM.write(i, 0);
 	
 	//Lecture du tag
 	for (uint8_t i=0 ; i< STRING_LEN; i++){
@@ -471,16 +454,15 @@ void readStoredVariables() {
 		#ifdef SERIALDEBUG1
 			Serial.println("Mise à zéro EEPROM");
 		#endif
-			
-		toDefault = true;	
+
+    EEPROM.put(STRING_LEN, settings);
     EEPROM.put(0, "OK");
     } else {
 		#ifdef SERIALDEBUG1
 		  Serial.println("EEPROM déjà initialisée");
+      EEPROM.get(STRING_LEN, settings);
 		#endif
 	  }
-	if (toDefault) EEPROM.put(STRING_LEN, defaultSettings);
-	EEPROM.get(STRING_LEN, settings);
 }
 
 void writeHTTPResponse(EthernetClient client) {	// send a standard http response header
