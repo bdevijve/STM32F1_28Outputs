@@ -29,24 +29,9 @@
 #include <ArduinoUniqueID.h>  // Library from https://github.com/ricaun/ArduinoUniqueID (Standard on the Arduino IDE Library Manager)
 #include <IWatchdog.h>        // Library included in Arduino_Core_STM32 version > 1.3.0
 
-#define STRING_LEN 30
-#define OUTPUT_COUNT 28       // Nb de sortie externe réel, sachant que la LED interne d'état sera comptabilisé en +
 
 bool IWatchdog_isReset=false;
 long BlinkStatus = 0;                            // Use to make Blink Status LED once each second
-
-uint16_t GPIOINIT_TABLE[] = {
-  PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7, PA8, PA9, PA10, PA11, PA12, PA13, PA14, PA15,
-  PB0, PB1, PB2, PB3, PB4, PB5, PB6, PB7, PB8, PB9, PB10, PB11, PB12, PB13, PB14, PB15,
-  PC0, PC1, PC2, PC3, PC4, PC5, PC6, PC7, PC8, PC9, PC10, PC11, PC12, PC13, PC14, PC15,
-  PD0, PD1, PD2, PD3, PD4, PD5, PD6, PD7, PD8, PD9, PD10, PD11, PD12, PD13, PD14, PD15,
-  PE0, PE1, PE2, PE3, PE4, PE5, PE6, PE7, PE8, PE9, PE10, PE11, PE12, PE13, PE14, PE15,
-  0xffff
-};
-
-uint8_t GPIO_OUTPUT[] = {
-  PC13, PE12, PE13, PE14, PB8, PA0, PA1, PA2, PA3, PB9, PB0, PB1, PE8, PE9, PE10, PE11, PB4, PB3, PA15, PB10, PB11, PD12, PD13, PD14, PD15, PC6, PC7, PC8, PC9
-};
 
 byte mac[] = {0x00, 0x80, 0xE1, 0x03, 0x04, 0x05} ; 
 
@@ -55,21 +40,24 @@ byte mac[] = {0x00, 0x80, 0xE1, 0x03, 0x04, 0x05} ;
 
 EthernetServer HTTPEthernetServer(80);
 EthernetClient MqttEthernetClient;
+PubSubClient mqttClient (MqttEthernetClient);
 
 bool needReset = false;
-uint8_t isON [] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0} ;
 
-#include "HTTP.h"
+long MQTT_LastReconnectAttempt = 0;                 // For automatic reconnection, non-blocking
+long MQTT_LastUptimeSent = 0;                       // For sending MQTT Uptime every nn seconds
+long MQTT_LoopIterationCount = 0;                   // For counting loop runs in the nn seconds timeframe
+
+#include "Tools.h"
 #include "MQTT.h"
+#include "HTTP.h"
 
 void setup() {
-
   
-  { // initialize ALL GPIO pins to INPUT_PULLUP in order to limit interrupt on floating PINs
+  { // initialize ALL GPIO pins to INPUT_PULLUP in order to limit interrupts on floating pins
     int pinNumber = 0;
     while ( GPIOINIT_TABLE[pinNumber] != 0xffff ) pinMode(GPIOINIT_TABLE[pinNumber++], INPUT_PULLUP);
   }
-//    for (int ; pinNumber < 80; pinNumber++) pinMode(GPIOINIT_TABLE[pinNumber], INPUT_PULLUP);
   
   Serial.begin(115200);
   IWatchdog_isReset=IWatchdog.isReset(true);
@@ -98,8 +86,6 @@ void setup() {
 
 
 //// MAKE BLINK FAST HERE
-
-
   
   mac[0] = 0x00; // UniqueID8[2]; 
   mac[1] = 0x80; // UniqueID8[3]; 
@@ -215,9 +201,7 @@ Ethernet.init(ETH_CS_PIN);
 }
 
 void loop() {
-	
 	IWatchdog.reload(); // Recharge le watchdog !!
- 
 	if (needReset){
     long now = millis();Serial.print(now);
 		Serial.println(" - Rebooting...");
@@ -270,12 +254,10 @@ void loop() {
 		bool skip = true;
 		bool dataPresent = false ;
 		
-        while (HTTPEthernetClient.connected()) {
-            if (HTTPEthernetClient.available()) {   // client data available to read
-                char c = HTTPEthernetClient.read(); // read 1 byte (character) from client
-                //Serial.write(c);
-				//store characters to string
-				req_str += c; 
+    while (HTTPEthernetClient.connected()) {
+      if (HTTPEthernetClient.available()) {   // client data available to read
+        char c = HTTPEthernetClient.read(); // read 1 byte (character) from client
+				req_str += c; // store characters to string
 				
 				// last line of client request is blank and ends with \n
                 // respond to client only after last line received
@@ -297,7 +279,7 @@ void loop() {
 					data_length = temp.toInt();
 					writeHTTPResponse(HTTPEthernetClient);
 					while(data_length-- > 0)
-						{
+				  {
 						c = HTTPEthernetClient.read();
 						req_str += c;
 					}

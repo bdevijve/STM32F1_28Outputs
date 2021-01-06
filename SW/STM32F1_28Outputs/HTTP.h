@@ -1,25 +1,7 @@
-#define MaxHeaderLength 350    //maximum length of http header required
-
-struct STRUCT_Settings {
-  char deviceName     [STRING_LEN];
-  IPAddress mqttServerIP          ;
-  char mqttPrefix     [STRING_LEN];
-  char subTopicStatus [STRING_LEN];
-  char subTopicSet    [STRING_LEN];
-  char subTopicUptime [STRING_LEN];
-};
-
-struct STRUCT_Settings settings = (STRUCT_Settings) {
-  "carte1",
-  IPAddress(192,168,1,22),
-  "carterelais",
-  "status", 
-  "set",
-  "uptime"
-};
+#define MAX_HTTP_HEADER_LENGTH 350    //maximum length of http header required
 
 void handleHTTPPost_deviceName(String req_str) {
-  String httpPostRequest = String(MaxHeaderLength);
+  String httpPostRequest = String(MAX_HTTP_HEADER_LENGTH);
 
   httpPostRequest = req_str.substring(req_str.indexOf("deviceName="));
   httpPostRequest.trim();
@@ -105,7 +87,7 @@ void handleHTTPPost_deviceName(String req_str) {
 
 
 void handleHTTPPost_switch_output(String req_str) {
-  String httpPostRequest = String(MaxHeaderLength);
+  String httpPostRequest = String(MAX_HTTP_HEADER_LENGTH);
 
   httpPostRequest = req_str.substring(req_str.indexOf("switch_output="));
   httpPostRequest.trim();
@@ -215,32 +197,4 @@ void writeHTTPResponse(EthernetClient client) {  // send a standard http respons
     </form>
     </fieldset>
     )FOO");
-    
 }
-
-void readStoredVariables() {
-  char buf ;
-  char readString [STRING_LEN];
-  
-  //Lecture du tag
-  for (uint8_t i=0 ; i< STRING_LEN; i++){
-    EEPROM.get(i, buf);
-    readString[i] = buf;    
-  }
-  
-  if  (strcmp(readString, "OK") != 0){
-    #ifdef SERIALDEBUG1
-      Serial.println("Mise à zéro EEPROM");
-    #endif
-
-    EEPROM.put(STRING_LEN, settings);
-    EEPROM.put(0, "OK");
-    } else {
-    #ifdef SERIALDEBUG1
-      Serial.println("EEPROM déjà initialisée");
-      EEPROM.get(STRING_LEN, settings);
-    #endif
-    }
-}
-
-  

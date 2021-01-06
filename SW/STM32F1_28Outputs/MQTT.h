@@ -1,73 +1,8 @@
-#define MQTT_STRING_LEN 128
+#define MQTT_PORT 1883
 char MQTT_CLIENT_ID[STRING_LEN] ; 
-const int MQTT_PORT = 1883 ;
-char dynamicTopic [MQTT_STRING_LEN];
-long MQTT_LastReconnectAttempt = 0;              // For automatic reconnection, non-blocking
-long MQTT_LastUptimeSent = 0;                        // For sending MQTT Uptime every nn seconds
-long MQTT_LoopIterationCount = 0;                    // For counting loop runs in the nn seconds timeframe
 
-PubSubClient mqttClient (MqttEthernetClient);
 
-void doON(uint8_t channel){
 
-  char topicOut [MQTT_STRING_LEN];
-  char convert [5];
-    
-  digitalWrite(GPIO_OUTPUT[channel], 1);
-  
-  strcpy (topicOut,dynamicTopic);
-  sprintf (convert, "%i", channel);
-  strcat (topicOut, convert);
-  strcat (topicOut, "/");
-  strcat (topicOut, settings.subTopicStatus);
-  mqttClient.publish(topicOut, "1", true);
-  
-  #ifdef SERIALDEBUG9
-    Serial.println ("Got it! ON");
-  #endif
-    
-  isON[channel] = 1 ;
-}
-
-void doOFF(uint8_t channel){
-  char topicOut [MQTT_STRING_LEN];
-  char convert [5];
-  
-  digitalWrite(GPIO_OUTPUT[channel], 0);
-
-  strcpy (topicOut,dynamicTopic);
-  sprintf (convert, "%i", channel);
-  strcat (topicOut, convert);
-  strcat (topicOut, "/");
-  strcat (topicOut, settings.subTopicStatus);
-  mqttClient.publish(topicOut, "0", true);
-  
-  #ifdef SERIALDEBUG9
-    Serial.println ("Got it! OFF");
-  #endif
-  
-  isON[channel] = 0 ;
-}
-
-void doTOGGLE(uint8_t channel){ if (isON[channel]) doOFF(channel); else doON(channel); }
-
-#ifdef __arm__
-// should use uinstd.h to define sbrk but Due causes a conflict
-extern "C" char* sbrk(int incr);
-#else  // __ARM__
-extern char *__brkval;
-#endif  // __arm__
- 
-int freeMemory() {
-  char top;
-#ifdef __arm__
-  return &top - reinterpret_cast<char*>(sbrk(0));
-#elif defined(CORE_TEENSY) || (ARDUINO > 103 && ARDUINO != 151)
-  return &top - __brkval;
-#else  // __arm__
-  return __brkval ? &top - __brkval : &top - __malloc_heap_start;
-#endif  // __arm__
-}
 
 void MQTT_SendUptime() {
     char topicOut[MQTT_STRING_LEN] ;  
