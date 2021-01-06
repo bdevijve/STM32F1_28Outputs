@@ -10,19 +10,19 @@
  *                  - Watchdog (4s)                                                                     DONE
  *                  - HTTP Publish Uptime                                                               DONE
  *                  - HTTP Publish FreeMemory                                                           DONE
- *                  - Mettre tous les GPIO en INPUT_PULLUP                                              DONE
+ *                  - Mettre tous les GPIO en INPUT_PULLUP à l’initialisation                           DONE
  *                  - Nettoyage profond de la fonction d'accès à l'EEPROM et de la structure Settings   DONE
  *                  - Découpage en code plus court                                                      DONE
  *                  - HTTP set Output                                                                   DONE
- *                  - Vérifier persistance des sorties après reboot (MQTT persistance)
  *                  - MQTT Publish Uptime                                                               En Cours
  *                  - MQTT Publish FreeMemory                                                           En Cours
+ *                  - Vérifier persistance des sorties après reboot (MQTT persistance)
  *                  - Faire flasher Output[0] rapidement tant que l'init n'est pas terminé
  *                  - DHCP Hostname & Freebox issue             
  *                  - Activer/désactiver la gestion du HTTP "POST" depuis une commande MQTT
  *                      (défault = possible si MQTT offline bien sûr)
  *                  - Vérifier memory leak sur 1 semaine avec des scripts MQTT et HTTP en //
-
+ *
  */
 
 #include <Ethernet.h>
