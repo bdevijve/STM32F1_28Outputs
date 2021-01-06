@@ -21,7 +21,7 @@
  *                  - DHCP Hostname & Freebox issue             
  *                  - Activer/désactiver la gestion du HTTP "POST" depuis une commande MQTT
  *                      (défault = possible si MQTT offline bien sûr)
- *                  - Vérifier memory leak sur 1 semaine
+ *                  - Vérifier memory leak sur 1 semaine avec des scripts MQTT et HTTP en //
 
  */
 
