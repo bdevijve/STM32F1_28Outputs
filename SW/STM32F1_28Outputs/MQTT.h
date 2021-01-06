@@ -142,11 +142,7 @@ void mqttCallback (char* topic , byte* payload , unsigned int length) {      // 
       9 on channel 0 -> reset board 
    */
 
-  #ifdef KEEP_BUG
-    if ( !strcmp (result[1] , settings.subTopicSet) && channel <= OUTPUT_COUNT+10 ){       // Simple, just switch on or off
-    #else
-    if ( !strcmp (result[1] , settings.subTopicSet) && channel <= OUTPUT_COUNT ){          // Simple, just switch on or off
-  #endif
+  if ( !strcmp (result[1] , settings.subTopicSet) ){          // Simple, just switch on or off or toogle
     if ( payload[0] == '0' ) doOFF(channel);    // Switch OFF
     if ( payload[0] == '1' ) doON(channel);     // Switch ON      
     if ( payload[0] == '2' ) doTOGGLE(channel); // Toggle ON <-> OFF

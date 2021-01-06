@@ -19,7 +19,6 @@ void handleHTTPPost_deviceName(String req_str) {
 
   // mqttserverIP  :Convert char array IP address to IPAddress format...
   char ipString[STRING_LEN];
-  bool successIPAdress = false;
   index1 = httpPostRequest.indexOf("mqttServerIP=") + 13;   index2 = httpPostRequest.indexOf("&", index1);
   for (int i= index1, j=0 ; i<index2; i++, j++) ipString[j] = httpPostRequest.charAt(i);
   ipString[(index2 - index1 )] = 0;
@@ -89,21 +88,21 @@ void handleHTTPPost_deviceName(String req_str) {
 void handleHTTPPost_switch_output(String req_str) {
   String httpPostRequest = String(MAX_HTTP_HEADER_LENGTH);
 
+  #ifdef SERIALDEBUG1
+    Serial.println("startWith switch_output=");
+  #endif
+
   httpPostRequest = req_str.substring(req_str.indexOf("switch_output="));
   httpPostRequest.trim();
     
   #ifdef SERIALDEBUG1
-    Serial.println("Chaîne POST:"); Serial.println(httpPostRequest);
+    { long now = millis(); Serial.print(now); }  Serial.println(" - Chaîne POST:"); Serial.println(httpPostRequest);
   #endif
 
-//  int index1 = httpPostRequest.indexOf("deviceName=") + 11;
-//  int index2 = httpPostRequest.indexOf("&", index1);
-
-  #ifdef SERIALDEBUG1
-    Serial.println("startWith switch_output=");
-  #endif
-  
-  doTOGGLE(10);
+  String machaine;
+  int index1 = httpPostRequest.indexOf("switch_output=") + 14; int index2 = httpPostRequest.length();
+  for (int i= index1, j=0 ; i<index2; i++, j++) machaine += httpPostRequest.charAt(i);
+  doTOGGLE(machaine.toInt());
 }
 
 void writeHTTPResponse(EthernetClient client) {  // send a standard http response header
@@ -195,7 +194,7 @@ void writeHTTPResponse(EthernetClient client) {  // send a standard http respons
   client.print(settings.subTopicUptime);client.print(R"FOO(" /> </td>
     </tr>
     </table>
-    <button type="submit" value="EcrireEEPROM">Valider les modifications et red&eacute;marrer</button>
+    <button type="submit">Valider les modifications et red&eacute;marrer</button>
     </form>
     </fieldset>
     )FOO");

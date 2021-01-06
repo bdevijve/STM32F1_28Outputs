@@ -6,20 +6,23 @@
 
 /*
  * Reste à faire :  - Faire flasher Output[0] chaque seconde pendant la boucle loop si tout est OK      DONE
- *                  - HTTP Publish Output                                                               DONE 
- *                  - Watchdog                                                                          DONE
- *                  - Vérifier memory leak                                                              DONE
+ *                  - HTTP Publish Output                                                               DONE
+ *                  - Watchdog (4s)                                                                     DONE
  *                  - HTTP Publish Uptime                                                               DONE
  *                  - HTTP Publish FreeMemory                                                           DONE
  *                  - Mettre tous les GPIO en INPUT_PULLUP                                              DONE
  *                  - Nettoyage profond de la fonction d'accès à l'EEPROM et de la structure Settings   DONE
+ *                  - Découpage en code plus court                                                      DONE
+ *                  - HTTP set Output                                                                   DONE
+ *                  - Vérifier persistance des sorties après reboot (MQTT persistance)
  *                  - MQTT Publish Uptime                                                               En Cours
  *                  - MQTT Publish FreeMemory                                                           En Cours
  *                  - Faire flasher Output[0] rapidement tant que l'init n'est pas terminé
- *                  - HTTP set Output                                                                   En Cours
  *                  - DHCP Hostname & Freebox issue             
- *                  - Activer/désactiver la configuration HTTP depuis une commande MQTT
- *                  - Vérifier persistance des sorties après reboot (MQTT persistance)
+ *                  - Activer/désactiver la gestion du HTTP "POST" depuis une commande MQTT
+ *                      (défault = possible si MQTT offline bien sûr)
+ *                  - Vérifier memory leak sur 1 semaine
+
  */
 
 #include <Ethernet.h>
@@ -276,13 +279,30 @@ void loop() {
 					String temp = req_str.substring(req_str.indexOf("Content-Length:") + 15);
 					temp.trim();
 					data_length = temp.toInt();
-					writeHTTPResponse(HTTPEthernetClient);
 					while(data_length-- > 0)
 				  {
 						c = HTTPEthernetClient.read();
 						req_str += c;
 					}
-					
+
+
+// XXXXXXXXXXXXXXXXXXX
+
+  if (dataPresent){
+    dataPresent  = false ;
+
+    #ifdef SERIALDEBUG1
+      Serial.println("Chaîne HTTP REQ:"); Serial.println(req_str);
+    #endif
+
+    if (req_str.indexOf("deviceName=") > 0) handleHTTPPost_deviceName(req_str);
+    else if (req_str.indexOf("switch_output=") > 0 ) handleHTTPPost_switch_output(req_str);
+    }
+
+          writeHTTPResponse(HTTPEthernetClient);
+
+// XXXXXXXXXXXXXXXXXXXXX
+
 					break;
 				}
 		
@@ -300,16 +320,5 @@ void loop() {
         } // end while (HTTPEthernetClient.connected())
 		
     HTTPEthernetClient.stop(); // close the connection
-	
-	if (dataPresent){
-		dataPresent  = false ;
-
-    #ifdef SERIALDEBUG1
-      Serial.println("Chaîne HTTP REQ:"); Serial.println(req_str);
-    #endif
-
-		if (req_str.indexOf("deviceName=") > 0) handleHTTPPost_deviceName(req_str);
-    else if (req_str.indexOf("switch_output=") > 0 ) handleHTTPPost_switch_output(req_str);
-	  }
 	}
 }

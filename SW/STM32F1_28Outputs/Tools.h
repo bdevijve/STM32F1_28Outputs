@@ -67,44 +67,55 @@ void doON(uint8_t channel){
 
   char topicOut [MQTT_STRING_LEN];
   char convert [5];
-    
-  digitalWrite(GPIO_OUTPUT[channel], 1);
-  
-  strcpy (topicOut,dynamicTopic);
-  sprintf (convert, "%i", channel);
-  strcat (topicOut, convert);
-  strcat (topicOut, "/");
-  strcat (topicOut, settings.subTopicStatus);
-  mqttClient.publish(topicOut, "1", true);
-  
-  #ifdef SERIALDEBUG9
-    Serial.println ("Got it! ON");
+
+  #ifndef KEEP_BUG
+    if (channel <= OUTPUT_COUNT) 
   #endif
-    
-  isON[channel] = 1 ;
+  {
+    digitalWrite(GPIO_OUTPUT[channel], 1);
+    isON[channel] = 1 ;
+    #ifdef SERIALDEBUG9
+      { long now = millis(); Serial.print(now); }  Serial.print (" - Got it! ON - channel "); Serial.println (channel);
+    #endif
+    strcpy (topicOut,dynamicTopic);
+    sprintf (convert, "%i", channel);
+    strcat (topicOut, convert);
+    strcat (topicOut, "/");
+    strcat (topicOut, settings.subTopicStatus);
+    mqttClient.publish(topicOut, "1", true);
+  }
 }
 
 void doOFF(uint8_t channel){
   char topicOut [MQTT_STRING_LEN];
   char convert [5];
   
-  digitalWrite(GPIO_OUTPUT[channel], 0);
-
-  strcpy (topicOut,dynamicTopic);
-  sprintf (convert, "%i", channel);
-  strcat (topicOut, convert);
-  strcat (topicOut, "/");
-  strcat (topicOut, settings.subTopicStatus);
-  mqttClient.publish(topicOut, "0", true);
-  
-  #ifdef SERIALDEBUG9
-    Serial.println ("Got it! OFF");
+  #ifndef KEEP_BUG
+    if (channel <= OUTPUT_COUNT) 
   #endif
-  
-  isON[channel] = 0 ;
+  {
+    digitalWrite(GPIO_OUTPUT[channel], 0);
+    isON[channel] = 0 ;
+    #ifdef SERIALDEBUG9
+      { long now = millis(); Serial.print(now); }  Serial.print (" - Got it! OFF - channel "); Serial.println (channel);
+    #endif
+    strcpy (topicOut,dynamicTopic);
+    sprintf (convert, "%i", channel);
+    strcat (topicOut, convert);
+    strcat (topicOut, "/");
+    strcat (topicOut, settings.subTopicStatus);
+    mqttClient.publish(topicOut, "0", true);
+  }
 }
 
-void doTOGGLE(uint8_t channel){ if (isON[channel]) doOFF(channel); else doON(channel); }
+void doTOGGLE(uint8_t channel){
+  #ifndef KEEP_BUG
+    if (channel <= OUTPUT_COUNT) 
+  #endif
+  {
+   if (isON[channel]) doOFF(channel); else doON(channel);
+  }
+}
 
 #ifdef __arm__
 // should use uinstd.h to define sbrk but Due causes a conflict
