@@ -104,10 +104,12 @@ void handleHTTPPost_switch_output(String req_str) {
   #endif
   
   doTOGGLE(10);
-  
 }
 
 void writeHTTPResponse(EthernetClient client) {  // send a standard http response header
+  #ifdef SERIALDEBUG1
+    { long now = millis(); Serial.print(now); }  Serial.println(" - writeHTTPResponse");
+  #endif
   client.println("HTTP/1.1 200 OK");
   client.println("Content-Type: text/html");
   client.println("Connection: close");  // the connection will be closed after completion of the response

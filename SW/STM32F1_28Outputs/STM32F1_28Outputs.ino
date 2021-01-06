@@ -1,6 +1,6 @@
 #define SERIALDEBUG1    // Comment to remove serial debugging info level 1
-//#define SERIALDEBUG2    // Comment to remove serial debugging info level 2
-//#define SERIALDEBUG9    // Comment to remove serial debugging info level 9
+#define SERIALDEBUG2    // Comment to remove serial debugging info level 2
+#define SERIALDEBUG9    // Comment to remove serial debugging info level 9
 #define SELF_TEST       // teste toutes les sorties au démarrage
 #define KEEP_BUG        // ne corrige pas le bug des channels 29 et +
 
@@ -28,7 +28,6 @@
 #include <PubSubClient.h>     // Library from https://github.com/knolleary/pubsubclient (Standard on the Arduino IDE Library Manager)
 #include <ArduinoUniqueID.h>  // Library from https://github.com/ricaun/ArduinoUniqueID (Standard on the Arduino IDE Library Manager)
 #include <IWatchdog.h>        // Library included in Arduino_Core_STM32 version > 1.3.0
-
 
 bool IWatchdog_isReset=false;
 long BlinkStatus = 0;                            // Use to make Blink Status LED once each second
@@ -147,9 +146,9 @@ void setup() {
     Serial.println(" - Ethernet Initialisation...") ;
 	#endif
 	
-  // start the Ethernet connection and the server:  
-Ethernet.init(ETH_CS_PIN);
-//  Ethernet.hostName(settings.deviceName);
+  
+  Ethernet.init(ETH_CS_PIN);  // Start the Ethernet connection and the server
+  //  Ethernet.hostName(settings.deviceName);
   Ethernet.begin(mac);
 
   // Check for Ethernet hardware present
@@ -161,8 +160,8 @@ Ethernet.init(ETH_CS_PIN);
     }
   if (Ethernet.linkStatus() == LinkOFF) Serial.println("Ethernet cable is not connected.");
 
-  // Start the HTTP Server
-  HTTPEthernetServer.begin();
+  
+  HTTPEthernetServer.begin(); // Start the HTTP Server
   #ifdef SERIALDEBUG1
     { long now = millis(); Serial.print(now); }
     Serial.print(" - My IP Address is ");
