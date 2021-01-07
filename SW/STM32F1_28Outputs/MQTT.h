@@ -6,16 +6,27 @@ char MQTT_CLIENT_ID[STRING_LEN] ;
 
 void MQTT_SendUptime() {
     char topicOut[MQTT_STRING_LEN] ;  
-    strcpy (topicOut, dynamicTopic);
-    strcat (topicOut, settings.subTopicUptime);
-//    mqttClient.publish(topicOut, "xxx");
+    char machaine[STRING_LEN];
     
     #ifdef SERIALDEBUG1
       { long now = millis(); Serial.print(now); }
       Serial.print (" - uptime: "); Serial.print (millis() / 1000);
-      Serial.print (" - LoopIterationCount: "); Serial.print (MQTT_LoopIterationCount);
+      Serial.print (" - LoopIterationCount: "); Serial.print (LoopIterationCount);
       Serial.print (" - freeMemory: "); Serial.println(freeMemory());
     #endif
+
+    sprintf(topicOut,"%s%s",dynamicTopic,settings.subTopicUptime);
+    long now = millis() / 1000;sprintf(machaine,"%d",now);
+    mqttClient.publish(topicOut, machaine);
+    
+    sprintf(topicOut,"%s%s",dynamicTopic,settings.subTopicLoopIterationCount);
+    sprintf(machaine,"%d",LoopIterationCount);
+    mqttClient.publish(topicOut, machaine);
+
+    sprintf(topicOut,"%s%s",dynamicTopic,settings.subTopicfreeMemory);
+    sprintf(machaine,"%d",freeMemory());
+    mqttClient.publish(topicOut, machaine);
+
     }
 
 void mqttCallback (char* topic , byte* payload , unsigned int length) {      // We will place here all that happens when a message is received on the subscribed MQTT topic(s) 
@@ -157,17 +168,15 @@ void mqttCallback (char* topic , byte* payload , unsigned int length) {      // 
 bool MQTT_Reconnect() {              // Code to test the MQTT connection and reconnect if necessary, does not block the processor
   if (mqttClient.connect(MQTT_CLIENT_ID)) {   // Unique clientID
     char topicOut[MQTT_STRING_LEN] ;
-  
     strcpy (topicOut, dynamicTopic);
     strcat (topicOut, settings.subTopicStatus);
     if ( IWatchdog_isReset ) mqttClient.publish(topicOut, "Client MQTT STM32 connecté. Card was restarted by Watchdog !!"); else mqttClient.publish(topicOut, "Client MQTT STM32 connecté. Bonjour, tout va bien par ici !!");
     strcpy (topicOut, dynamicTopic);
-    strcat (topicOut, "#");
+    strcat (topicOut, "+/");
+    strcat (topicOut, settings.subTopicSet);
     
     #ifdef SERIALDEBUG1
-      { long now = millis(); Serial.print(now); }
-      Serial.print (" - Subscribe to topic: ") ;
-      Serial.println (topicOut);
+      { long now = millis(); Serial.print(now); } Serial.print(" - Subscribe to topic: ") ; Serial.println(topicOut);
     #endif
     
     mqttClient.subscribe(topicOut);

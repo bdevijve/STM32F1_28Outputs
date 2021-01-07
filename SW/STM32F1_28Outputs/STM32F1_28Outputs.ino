@@ -5,19 +5,20 @@
 #define KEEP_BUG        // ne corrige pas le bug des channels 29 et +
 
 /*
- * Reste à faire :  - Faire flasher Output[0] chaque seconde pendant la boucle loop si tout est OK      DONE
- *                  - HTTP Publish Output                                                               DONE
- *                  - Watchdog (4s)                                                                     DONE
- *                  - HTTP Publish Uptime                                                               DONE
- *                  - HTTP Publish FreeMemory                                                           DONE
- *                  - Mettre tous les GPIO en INPUT_PULLUP à l’initialisation                           DONE
- *                  - Nettoyage profond de la fonction d'accès à l'EEPROM et de la structure Settings   DONE
- *                  - Découpage en code plus court                                                      DONE
- *                  - HTTP set Output                                                                   DONE
- *                  - MQTT Publish Uptime                                                               En Cours
- *                  - MQTT Publish FreeMemory                                                           En Cours
- *                  - Vérifier persistance des sorties après reboot (MQTT persistance)
+ * Reste à faire :  - Faire flasher Output[0] chaque seconde pendant la boucle loop si tout est OK                DONE
+ *                  - HTTP Publish Output                                                                         DONE
+ *                  - Watchdog (4s)                                                                               DONE
+ *                  - HTTP Publish Uptime                                                                         DONE
+ *                  - HTTP Publish FreeMemory                                                                     DONE
+ *                  - Mettre tous les GPIO en INPUT_PULLUP à l’initialisation                                     DONE
+ *                  - Nettoyage profond de la fonction d'accès à l'EEPROM et de la structure Settings             DONE
+ *                  - Découpage en code plus court                                                                DONE
+ *                  - HTTP set Output                                                                             DONE
+ *                  - MQTT Publish Uptime                                                                         En Cours
+ *                  - MQTT Publish FreeMemory                                                                     En Cours
+ *                  - Vérifier persistance des sorties après reboot (MQTT persistance sur le "[channel]/status")  En Cours
  *                  - Faire flasher Output[0] rapidement tant que l'init n'est pas terminé
+ *                      et la connection MQTT établie
  *                  - DHCP Hostname & Freebox issue             
  *                  - Activer/désactiver la gestion du HTTP "POST" depuis une commande MQTT
  *                      (défault = possible si MQTT offline bien sûr)
@@ -48,7 +49,7 @@ bool needReset = false;
 
 long MQTT_LastReconnectAttempt = 0;                 // For automatic reconnection, non-blocking
 long MQTT_LastUptimeSent = 0;                       // For sending MQTT Uptime every nn seconds
-long MQTT_LoopIterationCount = 0;                   // For counting loop runs in the nn seconds timeframe
+long LoopIterationCount = 0;                   // For counting loop runs in the nn seconds timeframe
 
 #include "Tools.h"
 #include "MQTT.h"
@@ -142,6 +143,8 @@ void setup() {
     Serial.println(settings.subTopicStatus);
     Serial.println(settings.subTopicSet);
     Serial.println(settings.subTopicUptime);
+    Serial.println(settings.subTopicLoopIterationCount);
+    Serial.println(settings.subTopicfreeMemory);
   #endif
   
   #ifdef SERIALDEBUG1
@@ -239,8 +242,8 @@ void loop() {
       }
     
     if (now - MQTT_LastUptimeSent >= 10000) {
-      MQTT_LastUptimeSent = now; MQTT_SendUptime(); MQTT_LoopIterationCount=0;
-    } else MQTT_LoopIterationCount++;
+      MQTT_LastUptimeSent = now; MQTT_SendUptime(); LoopIterationCount=0;
+    } else LoopIterationCount++;
     mqttClient.loop();
   }
 

@@ -36,10 +36,18 @@ void handleHTTPPost_deviceName(String req_str) {
   for (int i= index1, j=0 ; i<index2; i++, j++) settings.subTopicSet[j]    = httpPostRequest.charAt(i);
   settings.subTopicSet[(index2 - index1 )] = 0;
     
-  index1 = httpPostRequest.indexOf("subTopicUptime=") + 15; index2 = httpPostRequest.length();
+  index1 = httpPostRequest.indexOf("subTopicUptime=") + 15; index2 = httpPostRequest.indexOf("&", index1);
   for (int i= index1, j=0 ; i<index2; i++, j++) settings.subTopicUptime[j] = httpPostRequest.charAt(i);
   settings.subTopicUptime[(index2 - index1 )] = 0;
-    
+
+  index1 = httpPostRequest.indexOf("subTopicLoopIterationCount=") + 27; index2 = httpPostRequest.indexOf("&", index1);
+  for (int i= index1, j=0 ; i<index2; i++, j++) settings.subTopicLoopIterationCount[j] = httpPostRequest.charAt(i);
+  settings.subTopicLoopIterationCount[(index2 - index1 )] = 0;
+
+  index1 = httpPostRequest.indexOf("subTopicfreeMemory=") + 19; index2 = httpPostRequest.length();
+  for (int i= index1, j=0 ; i<index2; i++, j++) settings.subTopicfreeMemory[j] = httpPostRequest.charAt(i);
+  settings.subTopicfreeMemory[(index2 - index1 )] = 0;
+
   #ifdef SERIALDEBUG1
     Serial.println("Valeurs enregistrées:");
     Serial.println(settings.deviceName);
@@ -51,6 +59,8 @@ void handleHTTPPost_deviceName(String req_str) {
     Serial.println(settings.subTopicStatus);
     Serial.println(settings.subTopicSet);
     Serial.println(settings.subTopicUptime);
+    Serial.println(settings.subTopicLoopIterationCount);
+    Serial.println(settings.subTopicfreeMemory);
   #endif
   
   #ifdef SERIALDEBUG1
@@ -162,7 +172,11 @@ void writeHTTPResponse(EthernetClient client) {  // send a standard http respons
     client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/(canal 0-28)/");client.print(settings.subTopicSet); client.println("/");
     client.print(R"FOO(</li><li>Uptime:&nbsp;)FOO");
     client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/"); client.print(settings.subTopicUptime); client.println("/");
-  client.println("</li></ul><p></p></fieldset>");
+    client.print(R"FOO(</li><li>LoopIterationCount:&nbsp;)FOO");
+    client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/"); client.print(settings.subTopicLoopIterationCount); client.println("/");
+    client.print(R"FOO(</li><li>freeMemory:&nbsp;)FOO");
+    client.print(settings.mqttPrefix); client.print("/"); client.print(settings.deviceName); client.print("/"); client.print(settings.subTopicfreeMemory); client.println("/");
+    client.println("</li></ul><p></p></fieldset>");
     
   client.print(R"FOO(<fieldset><legend><h2>Mise &agrave; jour des param&egrave;tres MQTT :</h2></legend> 
     <form accept-charset="UTF-8" autocomplete="off" method="POST">
@@ -192,6 +206,14 @@ void writeHTTPResponse(EthernetClient client) {  // send a standard http respons
     <td><label for="subTopicUptimeLabel">Sous-topic uptime :</label></td> 
     <td><input name="subTopicUptime" type="text" value=")FOO");
   client.print(settings.subTopicUptime);client.print(R"FOO(" /> </td>
+    </tr><tr>
+    <td><label for="subTopicUptimeLabel">Sous-topic LoopIterationCount :</label></td> 
+    <td><input name="subTopicLoopIterationCount" type="text" value=")FOO");
+  client.print(settings.subTopicLoopIterationCount);client.print(R"FOO(" /> </td>
+    </tr><tr>
+    <td><label for="subTopicUptimeLabel">Sous-topic freeMemory :</label></td> 
+    <td><input name="subTopicfreeMemory" type="text" value=")FOO");
+  client.print(settings.subTopicfreeMemory);client.print(R"FOO(" /> </td>
     </tr>
     </table>
     <button type="submit">Valider les modifications et red&eacute;marrer</button>

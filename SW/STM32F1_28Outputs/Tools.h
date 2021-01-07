@@ -3,12 +3,14 @@ char dynamicTopic [MQTT_STRING_LEN];
 #define STRING_LEN 30
 
 struct STRUCT_Settings {
-  char deviceName     [STRING_LEN];
+  char deviceName                 [STRING_LEN];
   IPAddress mqttServerIP          ;
-  char mqttPrefix     [STRING_LEN];
-  char subTopicStatus [STRING_LEN];
-  char subTopicSet    [STRING_LEN];
-  char subTopicUptime [STRING_LEN];
+  char mqttPrefix                 [STRING_LEN];
+  char subTopicStatus             [STRING_LEN];
+  char subTopicSet                [STRING_LEN];
+  char subTopicUptime             [STRING_LEN];
+  char subTopicLoopIterationCount [STRING_LEN];
+  char subTopicfreeMemory         [STRING_LEN];
 };
 
 struct STRUCT_Settings settings = (STRUCT_Settings) {
@@ -17,7 +19,9 @@ struct STRUCT_Settings settings = (STRUCT_Settings) {
   "carterelais",
   "status", 
   "set",
-  "uptime"
+  "uptime",
+  "loopiterationcount",
+  "freeMemory"
 };
 
 uint16_t GPIOINIT_TABLE[] = {
