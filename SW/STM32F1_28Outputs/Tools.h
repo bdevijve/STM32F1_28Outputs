@@ -8,9 +8,7 @@ struct STRUCT_Settings {
   char mqttPrefix                 [STRING_LEN];
   char subTopicStatus             [STRING_LEN];
   char subTopicSet                [STRING_LEN];
-  char subTopicUptime             [STRING_LEN];
-  char subTopicLoopIterationCount [STRING_LEN];
-  char subTopicfreeMemory         [STRING_LEN];
+  char subTopicDebug             [STRING_LEN];
 };
 
 struct STRUCT_Settings settings = (STRUCT_Settings) {
@@ -19,10 +17,12 @@ struct STRUCT_Settings settings = (STRUCT_Settings) {
   "carterelais",
   "status", 
   "set",
-  "uptime",
-  "loopiterationcount",
-  "freeMemory"
+  "debug"
 };
+
+//#define subTopicUptime "uptime"
+//#define subTopicLoopIterationCount "loopiterationcount"
+//#define subTopicfreeMemory "freeMemory"
 
 uint16_t GPIOINIT_TABLE[] = {
   PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7, PA8, PA9, PA10, PA11, PA12, PA13, PA14, PA15,
@@ -76,9 +76,9 @@ void doON(uint8_t channel){
     if (channel <= OUTPUT_COUNT) 
   #endif
   {
-    digitalWrite(GPIO_OUTPUT[channel], 1);
-    isON[channel] = 1 ;
-    #ifdef SERIALDEBUG9
+    digitalWrite(GPIO_OUTPUT[channel], 1);isON[channel] = 1 ;
+    ActionCount++;
+#ifdef SERIALDEBUG9
       { long now = millis(); Serial.print(now); }  Serial.print (" - Got it! ON - channel "); Serial.println (channel);
     #endif
     strcpy (topicOut,dynamicTopic);
@@ -98,8 +98,8 @@ void doOFF(uint8_t channel){
     if (channel <= OUTPUT_COUNT) 
   #endif
   {
-    digitalWrite(GPIO_OUTPUT[channel], 0);
-    isON[channel] = 0 ;
+    digitalWrite(GPIO_OUTPUT[channel], 0);isON[channel] = 0 ;
+    ActionCount++;
     #ifdef SERIALDEBUG9
       { long now = millis(); Serial.print(now); }  Serial.print (" - Got it! OFF - channel "); Serial.println (channel);
     #endif

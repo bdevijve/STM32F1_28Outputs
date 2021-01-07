@@ -4,28 +4,33 @@ char MQTT_CLIENT_ID[STRING_LEN] ;
 
 
 
-void MQTT_SendUptime() {
+void MQTT_SendDebug() {
     char topicOut[MQTT_STRING_LEN] ;  
-    char machaine[STRING_LEN];
+    char MQTT_PayLoad[STRING_LEN];
     
     #ifdef SERIALDEBUG1
       { long now = millis(); Serial.print(now); }
       Serial.print (" - uptime: "); Serial.print (millis() / 1000);
       Serial.print (" - LoopIterationCount: "); Serial.print (LoopIterationCount);
+      Serial.print (" - ActionCount: "); Serial.print (ActionCount);
       Serial.print (" - freeMemory: "); Serial.println(freeMemory());
     #endif
 
-    sprintf(topicOut,"%s%s",dynamicTopic,settings.subTopicUptime);
-    long now = millis() / 1000;sprintf(machaine,"%d",now);
-    mqttClient.publish(topicOut, machaine);
+    sprintf(topicOut,"%s%s/Uptime",dynamicTopic,settings.subTopicDebug);
+    sprintf(MQTT_PayLoad,"%d",millis()/1000);
+    mqttClient.publish(topicOut, MQTT_PayLoad);
     
-    sprintf(topicOut,"%s%s",dynamicTopic,settings.subTopicLoopIterationCount);
-    sprintf(machaine,"%d",LoopIterationCount);
-    mqttClient.publish(topicOut, machaine);
+    sprintf(topicOut,"%s%s/LoopIterationCount",dynamicTopic,settings.subTopicDebug);
+    sprintf(MQTT_PayLoad,"%d",LoopIterationCount);
+    mqttClient.publish(topicOut, MQTT_PayLoad);
 
-    sprintf(topicOut,"%s%s",dynamicTopic,settings.subTopicfreeMemory);
-    sprintf(machaine,"%d",freeMemory());
-    mqttClient.publish(topicOut, machaine);
+    sprintf(topicOut,"%s%s/ActionCount",dynamicTopic,settings.subTopicDebug);
+    sprintf(MQTT_PayLoad,"%d",ActionCount);
+    mqttClient.publish(topicOut, MQTT_PayLoad);
+
+    sprintf(topicOut,"%s%s/freeMemory",dynamicTopic,settings.subTopicDebug);
+    sprintf(MQTT_PayLoad,"%d",freeMemory());
+    mqttClient.publish(topicOut, MQTT_PayLoad);
 
     }
 

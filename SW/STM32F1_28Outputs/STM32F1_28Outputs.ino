@@ -1,6 +1,6 @@
 #define SERIALDEBUG1    // Comment to remove serial debugging info level 1
-#define SERIALDEBUG2    // Comment to remove serial debugging info level 2
-#define SERIALDEBUG9    // Comment to remove serial debugging info level 9
+//#define SERIALDEBUG2    // Comment to remove serial debugging info level 2
+//#define SERIALDEBUG9    // Comment to remove serial debugging info level 9
 #define SELF_TEST       // teste toutes les sorties au démarrage
 #define KEEP_BUG        // ne corrige pas le bug des channels 29 et +
 
@@ -14,9 +14,9 @@
  *                  - Nettoyage profond de la fonction d'accès à l'EEPROM et de la structure Settings             DONE
  *                  - Découpage en code plus court                                                                DONE
  *                  - HTTP set Output                                                                             DONE
- *                  - MQTT Publish Uptime                                                                         En Cours
- *                  - MQTT Publish FreeMemory                                                                     En Cours
- *                  - Vérifier persistance des sorties après reboot (MQTT persistance sur le "[channel]/status")  En Cours
+ *                  - MQTT Publish Uptime                                                                         DONE
+ *                  - MQTT Publish FreeMemory                                                                     DONE
+ *                  - Vérifier persistance des sorties après reboot (MQTT persistance sur le "[channel]/status")  
  *                  - Faire flasher Output[0] rapidement tant que l'init n'est pas terminé
  *                      et la connection MQTT établie
  *                  - DHCP Hostname & Freebox issue             
@@ -49,7 +49,8 @@ bool needReset = false;
 
 long MQTT_LastReconnectAttempt = 0;                 // For automatic reconnection, non-blocking
 long MQTT_LastUptimeSent = 0;                       // For sending MQTT Uptime every nn seconds
-long LoopIterationCount = 0;                   // For counting loop runs in the nn seconds timeframe
+long LoopIterationCount = 0;                        // For counting loop runs in the nn seconds timeframe
+long ActionCount = 0;                               // For counting total action
 
 #include "Tools.h"
 #include "MQTT.h"
@@ -83,8 +84,8 @@ void setup() {
 
 
   #ifdef SELF_TEST
-    for (int i=0; i<OUTPUT_COUNT+1 ; i++){ digitalWrite(GPIO_OUTPUT[i] , 1);delay(10);digitalWrite(GPIO_OUTPUT[i], 0); }
-    for (int i=OUTPUT_COUNT; i>=0; i--)  { digitalWrite(GPIO_OUTPUT[i] , 1);delay(10);digitalWrite(GPIO_OUTPUT[i], 0); }
+    for (int i=0; i<OUTPUT_COUNT+1 ; i++){ digitalWrite(GPIO_OUTPUT[i], 1);delay(10);digitalWrite(GPIO_OUTPUT[i], 0); }
+    for (int i=OUTPUT_COUNT; i>=0; i--)  { digitalWrite(GPIO_OUTPUT[i], 1);delay(10);digitalWrite(GPIO_OUTPUT[i], 0); }
   #endif
 
 
@@ -142,9 +143,7 @@ void setup() {
     Serial.println(settings.mqttPrefix);    
     Serial.println(settings.subTopicStatus);
     Serial.println(settings.subTopicSet);
-    Serial.println(settings.subTopicUptime);
-    Serial.println(settings.subTopicLoopIterationCount);
-    Serial.println(settings.subTopicfreeMemory);
+    Serial.println(settings.subTopicDebug);
   #endif
   
   #ifdef SERIALDEBUG1
@@ -242,7 +241,7 @@ void loop() {
       }
     
     if (now - MQTT_LastUptimeSent >= 10000) {
-      MQTT_LastUptimeSent = now; MQTT_SendUptime(); LoopIterationCount=0;
+      MQTT_LastUptimeSent = now; MQTT_SendDebug(); LoopIterationCount=0;
     } else LoopIterationCount++;
     mqttClient.loop();
   }
@@ -288,24 +287,17 @@ void loop() {
 						req_str += c;
 					}
 
-
-// XXXXXXXXXXXXXXXXXXX
-
   if (dataPresent){
     dataPresent  = false ;
 
-    #ifdef SERIALDEBUG1
+    #ifdef SERIALDEBUG2
       Serial.println("Chaîne HTTP REQ:"); Serial.println(req_str);
     #endif
 
     if (req_str.indexOf("deviceName=") > 0) handleHTTPPost_deviceName(req_str);
     else if (req_str.indexOf("switch_output=") > 0 ) handleHTTPPost_switch_output(req_str);
     }
-
           writeHTTPResponse(HTTPEthernetClient);
-
-// XXXXXXXXXXXXXXXXXXXXX
-
 					break;
 				}
 		
