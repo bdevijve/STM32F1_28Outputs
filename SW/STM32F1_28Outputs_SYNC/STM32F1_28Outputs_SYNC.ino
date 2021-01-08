@@ -16,11 +16,12 @@
  *                  - HTTP set Output                                                                             DONE
  *                  - MQTT Publish Uptime                                                                         DONE
  *                  - MQTT Publish FreeMemory                                                                     DONE
- *                  - Découverte que le serveur HTTP est bloquant...
+ *                  
+ *                  - Découverte que le serveur HTTP est bloquant...                  
  *                    il faut passer à https://github.com/philbowles/STM32AsyncWebServer
  *                  - Découverte que la partie MQTT freeze quand on redémarre le serveur MQTT...
  *                    il faut passer à https://github.com/philbowles/PangolinMQTT
- *                -> Gros travail pour changer et passer ces 2 services en Async 
+ *                    
  *                  - Vérifier persistance des sorties après reboot (MQTT persistance sur le "[channel]/status")  
  *                  - Faire flasher Output[0] rapidement tant que l'init n'est pas terminé
  *                      et la connection MQTT établie
